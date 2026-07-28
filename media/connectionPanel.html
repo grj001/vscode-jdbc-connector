@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>数据库连接</title>
+	<link rel="stylesheet" href="{{ELEMENT_PLUS_CSS}}" />
+	<style>
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+		:root {
+			color-scheme: light dark;
+		}
+		body {
+			font-family: var(--vscode-font-family);
+			color: var(--vscode-foreground);
+			background: var(--vscode-editor-background);
+			min-height: 100vh;
+			padding: 24px;
+		}
+		#app {
+			max-width: 920px;
+			margin: 0 auto;
+		}
+		.header {
+			margin-bottom: 18px;
+		}
+		.title {
+			font-size: 20px;
+			font-weight: 600;
+			margin-bottom: 8px;
+		}
+		.subtitle {
+			font-size: 13px;
+			opacity: 0.75;
+			line-height: 1.6;
+		}
+		.footer-actions {
+			display: flex;
+			justify-content: flex-end;
+			gap: 12px;
+			margin-top: 12px;
+		}
+		.hint {
+			font-size: 12px;
+			opacity: 0.7;
+			margin-top: 6px;
+		}
+		@media (max-width: 640px) {
+			body {
+				padding: 12px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<div id="app">
+		<div class="header">
+			<div class="title">JDBC 连接配置</div>
+			<div class="subtitle">填写数据库连接信息，用于后续创建、测试和管理 JDBC 连接。</div>
+		</div>
+
+		<el-card class="panel-card" shadow="never">
+			<el-form :model="form" label-position="top" label-width="120px">
+				<el-row :gutter="16">
+					<el-col :xs="24" :sm="24">
+						<el-form-item label="连接名称">
+							<el-input v-model="form.name" placeholder="例如：本地 MySQL" />
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="24">
+						<el-form-item label="JDBC URL">
+							<el-input v-model="form.jdbcUrl" placeholder="jdbc:mysql://localhost:3306/test" />
+							<div class="hint">如果不填写，点击测试连接或保存时会根据主机、端口自动拼接。</div>
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="12">
+						<el-form-item label="驱动类型">
+							<el-select v-model="form.driverType" placeholder="请选择驱动类型">
+								<el-option v-for="item in driverTypes" :key="item.value" :label="item.label" :value="item.value" />
+							</el-select>
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="12">
+						<el-form-item label="驱动地址">
+							<el-input v-model="form.driverPath" placeholder="例如：/path/to/mysql-connector.jar" />
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="12">
+						<el-form-item label="主机地址">
+							<el-input v-model="form.host" placeholder="localhost" />
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="12">
+						<el-form-item label="端口">
+							<el-input v-model="form.port" type="number" placeholder="3306" />
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="12">
+						<el-form-item label="数据库名">
+							<el-input v-model="form.database" placeholder="test" />
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="12">
+						<el-form-item label="用户名">
+							<el-input v-model="form.username" placeholder="root" />
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="12">
+						<el-form-item label="密码">
+							<el-input v-model="form.password" type="password" show-password placeholder="请输入密码" />
+						</el-form-item>
+					</el-col>
+				</el-row>
+
+				<div class="footer-actions">
+					<el-button @click="handleTestConnection">测试连接</el-button>
+					<el-button type="primary" @click="handleSaveConnection">保存连接</el-button>
+				</div>
+			</el-form>
+		</el-card>
+	</div>
+
+	<script src="{{VUE_JS}}"></script>
+	<script src="{{ELEMENT_PLUS_JS}}"></script>
+	<script>
+		const { createApp } = Vue;
+		const vscode = acquireVsCodeApi();
+
+		createApp({
+			data() {
+				return {
+					driverTypes: [
+						{ label: 'SQLite', value: 'sqlite' },
+						{ label: 'MySQL', value: 'mysql' },
+						{ label: 'PostgreSQL', value: 'postgresql' },
+						{ label: 'Oracle', value: 'oracle' },
+						{ label: 'SQL Server', value: 'sqlserver' }
+					],
+					form: {
+						name: '',
+						jdbcUrl: '',
+						driverType: 'mysql',
+						driverPath: '',
+						host: 'localhost',
+						port: '3306',
+						database: '',
+						schema: '',
+						username: '',
+						password: ''
+					}
+				};
+			},
+			methods: {
+				buildJdbcUrl() {
+					if (this.form.jdbcUrl.trim()) {
+						return this.form.jdbcUrl.trim();
+					}
+
+					const host = (this.form.host || 'localhost').trim();
+					const port = (this.form.port || '').toString().trim();
+					const db = (this.form.database || '').trim();
+					const portPart = port ? `:${port}` : '';
+
+					switch (this.form.driverType) {
+						case 'postgresql':
+							return `jdbc:postgresql://${host}${portPart}/${db}`;
+						case 'oracle':
+							return `jdbc:oracle:thin:@${host}${portPart}:${db}`;
+						case 'sqlserver':
+							return `jdbc:sqlserver://${host}${portPart};databaseName=${db}`;
+						case 'sqlite':
+							return `jdbc:sqlite:${db}`;
+						default:
+							return `jdbc:mysql://${host}${portPart}/${db}`;
+					}
+				},
+				collectPayload() {
+					return {
+						...this.form,
+						jdbcUrl: this.buildJdbcUrl()
+					};
+				},
+				handleTestConnection() {
+					vscode.postMessage({
+						type: 'testConnection',
+						payload: this.collectPayload()
+					});
+				},
+				handleSaveConnection() {
+					vscode.postMessage({
+						type: 'saveConnection',
+						payload: this.collectPayload()
+					});
+				}
+			}
+		}).use(ElementPlus).mount('#app');
+	</script>
+</body>
+</html>

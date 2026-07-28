@@ -1,0 +1,73 @@
+{
+  "name": "vscode-jdbc-connector",
+  "displayName": "JDBC Connector",
+  "description": "A VSCode extension for connecting to databases via JDBC",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:jdbcConnections"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "jdbc-connector",
+          "title": "JDBC Connector",
+          "icon": "resources/database.svg"
+        }
+      ]
+    },
+    "views": {
+      "jdbc-connector": [
+        {
+          "id": "jdbcConnections",
+          "name": "数据库连接",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "vscode-jdbc-connector.newConnection",
+        "title": "新建连接",
+        "icon": "$(add)"
+      },
+      {
+        "command": "vscode-jdbc-connector.refreshConnections",
+        "title": "刷新",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "vscode-jdbc-connector.newConnection",
+          "when": "view == jdbcConnections",
+          "group": "navigation"
+        },
+        {
+          "command": "vscode-jdbc-connector.refreshConnections",
+          "when": "view == jdbcConnections",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "18.x",
+    "typescript": "^5.3.3"
+  }
+}

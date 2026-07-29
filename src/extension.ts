@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { ConnectionPanel } from './connectionPanel';
+import { ConnectionTreeItem } from './connectionTreeItem';
 import { ConnectionTreeProvider } from './connectionTreeProvider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -16,6 +17,19 @@ export function activate(context: vscode.ExtensionContext) {
 	const newConnectionCmd = vscode.commands.registerCommand(
 		'vscode-jdbc-connector.newConnection',
 		openConnectionPanel
+	);
+
+	// 编辑连接
+	const editConnectionCmd = vscode.commands.registerCommand(
+		'vscode-jdbc-connector.editConnection',
+		(item?: ConnectionTreeItem) => {
+			const targetItem = item ?? treeView.selection[0];
+			if (!targetItem?.connection) {
+				vscode.window.showInformationMessage('请先选择一个连接。');
+				return;
+			}
+			ConnectionPanel.show(context, targetItem.connection);
+		}
 	);
 
 	const refreshCmd = vscode.commands.registerCommand(
@@ -44,6 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
 		treeView,
 		visibilityDisposable,
 		newConnectionCmd,
+		editConnectionCmd,
 		refreshCmd
 	);
 }

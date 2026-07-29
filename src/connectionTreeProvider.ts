@@ -1,18 +1,8 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
-
-/**
- * 数据库连接树项
- */
-export class ConnectionTreeItem extends vscode.TreeItem {
-	constructor(
-		public readonly label: string,
-		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly command?: vscode.Command
-	) {
-		super(label, collapsibleState);
-	}
-}
-
+import type { ConnectionSettingsPayload } from './ConnectionSettingsPayload';
+import { ConnectionTreeItem } from './connectionTreeItem';
 
 /**
  * 数据库连接树提供者
@@ -30,16 +20,33 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	}
 
 	getChildren(): ConnectionTreeItem[] {
-		return [
-			new ConnectionTreeItem(
-				'新建连接',
-				vscode.TreeItemCollapsibleState.None,
-				{
-					command: 'vscode-jdbc-connector.newConnection',
-					title: '新建连接',
-					arguments: []
-				}
-			)
-		];
+		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		if (!workspaceFolder) {
+			return [];
+		}
+
+		const settingsPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'settings.json');
+		let currentSettings: Record<string, unknown> = {};
+		try {
+			const raw = fs.readFileSync(settingsPath, 'utf8');
+			currentSettings = raw.trim() ? JSON.parse(raw) : {};
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code;
+			if (code !== 'ENOENT') {
+				vscode.window.showErrorMessage('读取连接配置失败。');
+			}
+			return [];
+		}
+
+		const connections = Array.isArray(currentSettings['vscode-jdbc-connector.connections'])
+			? (currentSettings['vscode-jdbc-connector.connections'] as ConnectionSettingsPayload[])
+			: [];
+
+		return connections.map((connection) => new ConnectionTreeItem(
+			connection.name,
+			vscode.TreeItemCollapsibleState.None,
+			undefined,
+			connection
+		));
 	}
 }

@@ -4,21 +4,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { promisify } from 'util';
+import type { ConnectionSettingsPayload } from './ConnectionSettingsPayload';
 
 const execFileAsync = promisify(execFile);
-
-export interface ConnectionSettingsPayload {
-	name: string;
-	jdbcUrl: string;
-	driverType: string;
-	driverPath: string;
-	host: string;
-	port: string;
-	database: string;
-	schema: string;
-	username: string;
-	password: string;
-}
 
 /**
  * 数据库连接面板
@@ -30,7 +18,7 @@ export class ConnectionPanel {
 	 * 显示数据库连接面板
 	 * @param context 扩展上下文
 	 */
-	static show(context: vscode.ExtensionContext): void {
+	static show(context: vscode.ExtensionContext, connection?: ConnectionSettingsPayload): void {
 		if (ConnectionPanel.currentPanel) {
 			ConnectionPanel.currentPanel._panel.reveal(vscode.ViewColumn.One);
 			return;
@@ -38,12 +26,12 @@ export class ConnectionPanel {
 
 		const panel = vscode.window.createWebviewPanel(
 			'jdbcConnection',
-			'数据库连接',
+			'数据库连接-' + (connection?.name || '新连接'),
 			vscode.ViewColumn.One,
 			{ enableScripts: true, retainContextWhenHidden: true }
 		);
 
-		ConnectionPanel.currentPanel = new ConnectionPanel(panel, context);
+		ConnectionPanel.currentPanel = new ConnectionPanel(panel, context, connection);
 	}
 
 	/**
@@ -53,14 +41,15 @@ export class ConnectionPanel {
 	 */
 	private constructor(
 		private readonly _panel: vscode.WebviewPanel,
-		private readonly _context: vscode.ExtensionContext
+		private readonly _context: vscode.ExtensionContext,
+		private readonly _connection?: ConnectionSettingsPayload
 	) {
 		this._panel.webview.html = this._getHtml();
 		// 监听消息
 		this._panel.webview.onDidReceiveMessage((message) => {
 			// 保存连接
 			if (message?.type === 'saveConnection') {
-				void this._saveConnection(message.payload as ConnectionSettingsPayload);
+				void this._saveOrUpdateConnection(message.payload as ConnectionSettingsPayload);
 			}
 			// 测试连接
 			if (message?.type === 'testConnection') {
@@ -76,7 +65,7 @@ export class ConnectionPanel {
 	 * 获取HTML内容
 	 * @returns HTML内容
 	 */
-	private async _saveConnection(payload: ConnectionSettingsPayload): Promise<void> {
+	private async _saveOrUpdateConnection(payload: ConnectionSettingsPayload): Promise<void> {
 		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
 		if (!workspaceFolder) {
 			vscode.window.showWarningMessage('请先打开一个工作区后再保存连接。');
@@ -101,10 +90,24 @@ export class ConnectionPanel {
 		const connections = Array.isArray(currentSettings['vscode-jdbc-connector.connections'])
 			? (currentSettings['vscode-jdbc-connector.connections'] as ConnectionSettingsPayload[])
 			: [];
-		connections.push(payload);
+
+		// 查找已存在的连接
+		const existingConnection = connections.find((conn) => conn.id === payload.id);
+		if (existingConnection) {
+			// 更新已存在的连接
+			connections[connections.indexOf(existingConnection)] = payload;
+		} else {
+			// 新增连接
+			payload.id = Date.now().toString();
+			connections.push(payload);
+		}
 		currentSettings['vscode-jdbc-connector.connections'] = connections;
 
 		await fs.promises.writeFile(settingsPath, `${JSON.stringify(currentSettings, null, 2)}\n`, 'utf8');
+
+		// 刷新连接树视图
+		await vscode.commands.executeCommand('vscode-jdbc-connector.refreshConnections');
+
 		vscode.window.showInformationMessage(`连接已保存到 ${path.relative(workspaceFolder.uri.fsPath, settingsPath)}`);
 	}
 
@@ -202,10 +205,15 @@ export class ConnectionPanel {
 		const html = fs.readFileSync(htmlPath, 'utf8');
 		const webview = this._panel.webview;
 		const mediaPath = vscode.Uri.joinPath(vscode.Uri.file(this._context.extensionPath), 'media');
-		const vueJs = webview.asWebviewUri(vscode.Uri.joinPath(mediaPath, 'vue.3.5.13.min.js'));
-		const elementPlusJs = webview.asWebviewUri(vscode.Uri.joinPath(mediaPath, 'element-plus.2.8.8.min.js'));
-		const elementPlusCss = webview.asWebviewUri(vscode.Uri.joinPath(mediaPath, 'element-plus.2.8.8.min.css'));
+		const vueJs = webview.asWebviewUri(vscode.Uri.joinPath(mediaPath, 'vue.3.5.40.min.js'));
+		const elementPlusJs = webview.asWebviewUri(vscode.Uri.joinPath(mediaPath, 'element-plus.2.14.3.js'));
+		const elementPlusCss = webview.asWebviewUri(vscode.Uri.joinPath(mediaPath, 'element-plus.2.14.3.min.css'));
+		const initialConnectionJson = JSON.stringify(this._connection ?? null)
+			.replace(/\\/g, '\\\\')
+			.replace(/'/g, "\\'")
+			.replace(/"/g, '\\"');
 		return html
+			.replace('{{INITIAL_CONNECTION_JSON}}', initialConnectionJson)
 			.replace('{{VUE_JS}}', vueJs.toString())
 			.replace('{{ELEMENT_PLUS_JS}}', elementPlusJs.toString())
 			.replace('{{ELEMENT_PLUS_CSS}}', elementPlusCss.toString());

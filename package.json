@@ -43,6 +43,11 @@
         "command": "vscode-jdbc-connector.refreshConnections",
         "title": "刷新",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "vscode-jdbc-connector.editConnection",
+        "title": "编辑连接",
+        "icon": "$(edit)"
       }
     ],
     "menus": {
@@ -54,6 +59,11 @@
         },
         {
           "command": "vscode-jdbc-connector.refreshConnections",
+          "when": "view == jdbcConnections",
+          "group": "navigation"
+        },
+        {
+          "command": "vscode-jdbc-connector.editConnection",
           "when": "view == jdbcConnections",
           "group": "navigation"
         }

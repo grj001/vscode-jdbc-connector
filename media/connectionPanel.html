@@ -4,7 +4,13 @@
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>数据库连接</title>
-	<link rel="stylesheet" href="{{ELEMENT_PLUS_CSS}}" />
+
+	<script src="{{VUE_JS}}"></script>
+    <!-- import CSS -->
+    <link rel="stylesheet" href="{{ELEMENT_PLUS_CSS}}" />
+    <!-- import JavaScript -->
+    <script src="{{ELEMENT_PLUS_JS}}"></script>
+
 	<style>
 		* {
 			box-sizing: border-box;
@@ -55,6 +61,7 @@
 			}
 		}
 	</style>
+
 </head>
 <body>
 	<div id="app">
@@ -72,6 +79,14 @@
 						</el-form-item>
 					</el-col>
 
+					<el-col :xs="24" :sm="12">
+						<el-form-item label="驱动类型">
+							<el-select v-model="form.driverType" placeholder="请选择驱动类型" @change="handleDriverTypeChange">
+								<el-option v-for="item in driverTypes" :key="item.value" :label="item.label" :value="item.value" />
+							</el-select>
+						</el-form-item>
+					</el-col>
+
 					<el-col :xs="24" :sm="24">
 						<el-form-item label="JDBC URL">
 							<el-input v-model="form.jdbcUrl" placeholder="jdbc:mysql://localhost:3306/test" />
@@ -80,16 +95,14 @@
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="驱动类型">
-							<el-select v-model="form.driverType" placeholder="请选择驱动类型">
-								<el-option v-for="item in driverTypes" :key="item.value" :label="item.label" :value="item.value" />
-							</el-select>
+						<el-form-item label="驱动地址">
+							<el-input v-model="form.driverPath" placeholder="例如：/path/to/mysql-connector.jar" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="驱动地址">
-							<el-input v-model="form.driverPath" placeholder="例如：/path/to/mysql-connector.jar" />
+						<el-form-item label="驱动类名">
+							<el-input v-model="form.driverClass" placeholder="例如：com.mysql.cj.jdbc.Driver" />
 						</el-form-item>
 					</el-col>
 
@@ -138,13 +151,12 @@
 		</el-card>
 	</div>
 
-	<script src="{{VUE_JS}}"></script>
-	<script src="{{ELEMENT_PLUS_JS}}"></script>
 	<script>
+		const initialConnection = JSON.parse('{{INITIAL_CONNECTION_JSON}}');
 		const { createApp } = Vue;
 		const vscode = acquireVsCodeApi();
 
-		createApp({
+		const app = createApp({
 			data() {
 				return {
 					driverTypes: [
@@ -152,11 +164,16 @@
 						{ label: 'MySQL', value: 'mysql' },
 						{ label: 'PostgreSQL', value: 'postgresql' },
 						{ label: 'Oracle', value: 'oracle' },
-						{ label: 'SQL Server', value: 'sqlserver' }
+						{ label: 'SQL Server', value: 'sqlserver' },
+						{ label: 'Kingbase', value: 'kingbase' }, // 人大金仓
+						{ label: 'DMDB', value: 'dmdb' }, // 达梦数据库
+						{ label: 'Other', value: 'other' },
 					],
-					form: {
+					form: initialConnection || {
+						id: '',
 						name: '',
 						jdbcUrl: '',
+						driverClass: '',
 						driverType: 'mysql',
 						driverPath: '',
 						jdkPath: '',
@@ -170,33 +187,47 @@
 				};
 			},
 			methods: {
-				buildJdbcUrl() {
-					if (this.form.jdbcUrl.trim()) {
-						return this.form.jdbcUrl.trim();
-					}
-
-					const host = (this.form.host || 'localhost').trim();
-					const port = (this.form.port || '').toString().trim();
-					const db = (this.form.database || '').trim();
-					const portPart = port ? `:${port}` : '';
-
+				handleDriverTypeChange() {
 					switch (this.form.driverType) {
 						case 'postgresql':
-							return `jdbc:postgresql://${host}${portPart}/${db}`;
+							this.form.driverPath = `jdbc:postgresql://${host}${portPart}/${db}`;
+							this.form.port = '5432';
+							this.form.driverClass = 'org.postgresql.Driver';
+							break;
 						case 'oracle':
-							return `jdbc:oracle:thin:@${host}${portPart}:${db}`;
+							this.form.driverPath = `jdbc:oracle:thin:@${host}${portPart}:${db}`;
+							this.form.port = '1521';
+							this.form.driverClass = 'oracle.jdbc.driver.OracleDriver';
+							break;
 						case 'sqlserver':
-							return `jdbc:sqlserver://${host}${portPart};databaseName=${db}`;
+							this.form.driverPath = `jdbc:sqlserver://${host}${portPart};databaseName=${db}`;
+							this.form.port = '1433';
+							this.form.driverClass = 'com.microsoft.sqlserver.jdbc.SQLServerDriver';
+							break;
 						case 'sqlite':
-							return `jdbc:sqlite:${db}`;
+							this.form.driverPath = `jdbc:sqlite:${db}`;
+							this.form.port = '8080';
+							this.form.driverClass = 'org.sqlite.JDBC';
+							break;
+						case 'kingbase':
+							this.form.driverPath = `jdbc:kingbase://${host}${portPart}/${db}`;
+							this.form.port = '8080';
+							this.form.driverClass = 'com.kingbase.jdbc.KingbaseDriver';
+							break;
+						case 'dmdb':
+							this.form.driverPath = `jdbc:dmdb://${host}${portPart}/${db}`;
+							this.form.port = '8080';
+							this.form.driverClass = 'com.dmdb.jdbc.DMDBDriver';
+							break;
 						default:
-							return `jdbc:mysql://${host}${portPart}/${db}`;
+							this.form.driverPath = `jdbc:mysql://${host}${portPart}/${db}`;
+							this.form.port = '3306';
+							break;
 					}
 				},
 				collectPayload() {
 					return {
-						...this.form,
-						jdbcUrl: this.buildJdbcUrl()
+						...this.form
 					};
 				},
 				handleTestConnection() {
@@ -212,7 +243,15 @@
 					});
 				}
 			}
-		}).use(ElementPlus).mount('#app');
+		});
+
+		if (window.ElementPlusIconsVue) {
+			for (const [key, component] of Object.entries(window.ElementPlusIconsVue)) {
+				app.component(key, component);
+			}
+		}
+
+		app.use(ElementPlus).mount('#app');
 	</script>
 </body>
 </html>

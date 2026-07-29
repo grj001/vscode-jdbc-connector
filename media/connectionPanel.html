@@ -94,6 +94,12 @@
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
+						<el-form-item label="JDK地址">
+							<el-input v-model="form.jdkPath" placeholder="例如：/path/to/jdk" />
+						</el-form-item>
+					</el-col>
+
+					<el-col :xs="24" :sm="12">
 						<el-form-item label="主机地址">
 							<el-input v-model="form.host" placeholder="localhost" />
 						</el-form-item>
@@ -153,6 +159,7 @@
 						jdbcUrl: '',
 						driverType: 'mysql',
 						driverPath: '',
+						jdkPath: '',
 						host: 'localhost',
 						port: '3306',
 						database: '',
@@ -198,7 +205,7 @@
 						payload: this.collectPayload()
 					});
 				},
-				handleSaveConnection() {
+				async handleSaveConnection() {
 					vscode.postMessage({
 						type: 'saveConnection',
 						payload: this.collectPayload()

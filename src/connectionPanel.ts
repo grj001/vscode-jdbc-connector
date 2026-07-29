@@ -1,6 +1,24 @@
+import { execFile } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
+
+export interface ConnectionSettingsPayload {
+	name: string;
+	jdbcUrl: string;
+	driverType: string;
+	driverPath: string;
+	host: string;
+	port: string;
+	database: string;
+	schema: string;
+	username: string;
+	password: string;
+}
 
 /**
  * 数据库连接面板
@@ -38,6 +56,17 @@ export class ConnectionPanel {
 		private readonly _context: vscode.ExtensionContext
 	) {
 		this._panel.webview.html = this._getHtml();
+		// 监听消息
+		this._panel.webview.onDidReceiveMessage((message) => {
+			// 保存连接
+			if (message?.type === 'saveConnection') {
+				void this._saveConnection(message.payload as ConnectionSettingsPayload);
+			}
+			// 测试连接
+			if (message?.type === 'testConnection') {
+				void this._testConnection(message.payload as ConnectionSettingsPayload);
+			}
+		}, null, this._context.subscriptions);
 		this._panel.onDidDispose(() => {
 			ConnectionPanel.currentPanel = undefined;
 		}, null, this._context.subscriptions);
@@ -47,6 +76,127 @@ export class ConnectionPanel {
 	 * 获取HTML内容
 	 * @returns HTML内容
 	 */
+	private async _saveConnection(payload: ConnectionSettingsPayload): Promise<void> {
+		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		if (!workspaceFolder) {
+			vscode.window.showWarningMessage('请先打开一个工作区后再保存连接。');
+			return;
+		}
+
+		const settingsDir = path.join(workspaceFolder.uri.fsPath, '.vscode');
+		const settingsPath = path.join(settingsDir, 'settings.json');
+		await fs.promises.mkdir(settingsDir, { recursive: true });
+
+		let currentSettings: Record<string, unknown> = {};
+		try {
+			const raw = await fs.promises.readFile(settingsPath, 'utf8');
+			currentSettings = raw.trim() ? JSON.parse(raw) : {};
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code;
+			if (code !== 'ENOENT') {
+				throw error;
+			}
+		}
+
+		const connections = Array.isArray(currentSettings['vscode-jdbc-connector.connections'])
+			? (currentSettings['vscode-jdbc-connector.connections'] as ConnectionSettingsPayload[])
+			: [];
+		connections.push(payload);
+		currentSettings['vscode-jdbc-connector.connections'] = connections;
+
+		await fs.promises.writeFile(settingsPath, `${JSON.stringify(currentSettings, null, 2)}\n`, 'utf8');
+		vscode.window.showInformationMessage(`连接已保存到 ${path.relative(workspaceFolder.uri.fsPath, settingsPath)}`);
+	}
+
+
+	/**
+	 * 测试数据库连接
+	 * @param payload 连接设置
+	 */
+	private async _testConnection(payload: ConnectionSettingsPayload): Promise<void> {
+		if (!payload.jdbcUrl?.trim()) {
+			vscode.window.showWarningMessage('请先填写 JDBC URL。');
+			return;
+		}
+
+		if (!payload.driverPath?.trim()) {
+			vscode.window.showWarningMessage('请先填写 JDBC 驱动路径。');
+			return;
+		}
+
+		// 检查驱动是否存在
+		const driverPath = path.resolve(payload.driverPath.trim());
+		try {
+			await fs.promises.access(driverPath, fs.constants.F_OK);
+		} catch {
+			vscode.window.showErrorMessage(`JDBC 驱动不存在：${driverPath}`);
+			return;
+		}
+
+		const driverClassName = this._getDriverClassName(payload.driverType);
+		const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'vscode-jdbc-connector-'));
+		const sourcePath = path.join(tempDir, 'TestJdbcConnection.java');
+		const templatePath = path.join(this._context.extensionPath, 'resources', 'TestJdbcConnection.java');
+		const classPath = `${driverPath}${path.delimiter}${tempDir}`;
+
+		await fs.promises.copyFile(templatePath, sourcePath);
+		await execFileAsync('javac', [sourcePath], { cwd: tempDir, timeout: 15000, windowsHide: true });
+
+		const testMessage = vscode.window.setStatusBarMessage('正在测试 JDBC 连接...');
+		try {
+			const { stdout } = await execFileAsync(
+				'java',
+				[
+					'-cp',
+					classPath,
+					'TestJdbcConnection',
+					driverClassName,
+					payload.jdbcUrl.trim(),
+					payload.username?.trim() ?? '',
+					payload.password ?? '',
+					payload.schema?.trim() ?? ''
+				],
+				{ timeout: 15000, windowsHide: true }
+			);
+			const detail = stdout.trim();
+			vscode.window.showInformationMessage(detail ? `连接测试成功：${detail}` : '连接测试成功。');
+		} catch (error) {
+			const execError = error as NodeJS.ErrnoException & { stderr?: string; stdout?: string; killed?: boolean };
+			if (execError.code === 'ENOENT') {
+				const commandName = execError.message.includes('javac') ? 'javac' : 'java';
+				vscode.window.showErrorMessage(`未找到 ${commandName} 命令，请先安装并配置 Java 开发环境。`);
+				return;
+			}
+			if (execError.killed) {
+				vscode.window.showErrorMessage('连接测试超时，请检查数据库地址、端口和驱动配置。');
+				return;
+			}
+
+			const detail = execError.stderr?.trim() || execError.stdout?.trim() || execError.message;
+			vscode.window.showErrorMessage(`连接测试失败：${detail}`);
+		} finally {
+			testMessage.dispose();
+			await fs.promises.rm(tempDir, { recursive: true, force: true });
+		}
+	}
+
+	private _getDriverClassName(driverType: string): string {
+		switch ((driverType || '').trim().toLowerCase()) {
+			case 'mysql':
+				return 'com.mysql.cj.jdbc.Driver';
+			case 'postgresql':
+				return 'org.postgresql.Driver';
+			case 'oracle':
+				return 'oracle.jdbc.OracleDriver';
+			case 'sqlserver':
+				return 'com.microsoft.sqlserver.jdbc.SQLServerDriver';
+			case 'sqlite':
+				return 'org.sqlite.JDBC';
+			default:
+				return '';
+		}
+	}
+
 	private _getHtml(): string {
 		const htmlPath = path.join(this._context.extensionPath, 'media', 'connectionPanel.html');
 		const html = fs.readFileSync(htmlPath, 'utf8');

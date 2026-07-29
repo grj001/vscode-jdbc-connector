@@ -1,0 +1,10 @@
+**STRICT FORMAT ENFORCEMENT**:
+Follow the Conventional Commits format exactly:
+- `feat`: 新功能 (New feature)
+- `fix`: 修复 (Bug fix)
+- `docs`: 文档 (Documentation)
+- `style`: 格式 (Formatting, no code change)
+- `refactor`: 重构 (Refactoring)
+- `test`: 测试 (Adding/refactoring tests)
+- `chore`: 构建/工具 (Build tasks, config)
+- git提交使用中文

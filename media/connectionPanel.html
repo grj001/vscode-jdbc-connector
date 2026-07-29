@@ -200,7 +200,7 @@
 							this.form.driverClass = 'oracle.jdbc.driver.OracleDriver';
 							break;
 						case 'sqlserver':
-							this.form.driverPath = `jdbc:sqlserver://${host}${portPart};databaseName=${db}`;
+							this.form.driverPath = `jdbc:sqlserver://${host}${portPart};databaseName=${db};encrypt=true;trustServerCertificate=true;`;
 							this.form.port = '1433';
 							this.form.driverClass = 'com.microsoft.sqlserver.jdbc.SQLServerDriver';
 							break;

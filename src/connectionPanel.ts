@@ -150,6 +150,7 @@ export class ConnectionPanel {
 			const { stdout } = await execFileAsync(
 				'java',
 				[
+					'-Dfile.encoding=UTF-8',
 					'-cp',
 					classPath,
 					'TestJdbcConnection',

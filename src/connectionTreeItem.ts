@@ -10,7 +10,8 @@ export class ConnectionTreeItem extends vscode.TreeItem {
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly command?: vscode.Command,
 		public readonly connection?: ConnectionSettingsPayload,
-		public readonly contextValue?: string
+		public readonly contextValue?: string,
+		public readonly schemaName?: string
 	) {
 		super(label, collapsibleState);
 	}

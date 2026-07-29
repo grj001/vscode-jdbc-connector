@@ -35,13 +35,18 @@ public class ListJdbcTables {
 
             DatabaseMetaData metaData = connection.getMetaData();
             String targetCatalog = catalog.isEmpty() ? connection.getCatalog() : catalog;
-            String targetSchema = schema.isEmpty() ? connection.getSchema() : schema;
+            String targetSchema = schema.isEmpty() ? null : schema;
 
             try (ResultSet tables = metaData.getTables(targetCatalog, targetSchema, "%", new String[] { "TABLE" })) {
                 while (tables.next()) {
+                    String schemaName = tables.getString("TABLE_SCHEM");
                     String tableName = tables.getString("TABLE_NAME");
                     if (tableName != null && !tableName.isEmpty()) {
-                        System.out.println(tableName);
+                        if (schemaName != null && !schemaName.isEmpty()) {
+                            System.out.println(schemaName + "." + tableName);
+                        } else {
+                            System.out.println(tableName);
+                        }
                     }
                 }
             }

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<title>查询结果</title>
+	<style>
+		body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 12px; }
+		.toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+		button { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); padding: 6px 12px; cursor: pointer; }
+		button:hover { background: var(--vscode-button-hoverBackground); }
+		.connection { margin-bottom: 8px; color: var(--vscode-descriptionForeground); }
+		.message { margin-bottom: 12px; color: var(--vscode-descriptionForeground); }
+		table { width: 100%; border-collapse: collapse; }
+		th, td { border: 1px solid var(--vscode-panel-border); padding: 6px 8px; text-align: left; vertical-align: top; }
+		th { background: var(--vscode-editorGroupHeader-tabsBackground); }
+	</style>
+</head>
+<body>
+	<div class="toolbar">
+		<button id="executeQueryButton" type="button">运行查询</button>
+		<button id="executeSelectedQueryButton" type="button">运行已选中</button>
+	</div>
+	<div class="connection">当前连接：{{CONNECTION_NAME}}</div>
+	<div class="message">{{MESSAGE}}</div>
+	<table>
+		<thead><tr>{{HEADER_HTML}}</tr></thead>
+		<tbody>{{BODY_HTML}}</tbody>
+	</table>
+	<script>
+		const vscode = acquireVsCodeApi();
+		document.getElementById('executeQueryButton')?.addEventListener('click', () => {
+			vscode.postMessage({ type: 'executeQuery' });
+		});
+		document.getElementById('executeSelectedQueryButton')?.addEventListener('click', () => {
+			vscode.postMessage({ type: 'executeSelectedQuery' });
+		});
+	</script>
+</body>
+</html>

@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 	// 创建查询结果视图
-	const queryResultViewProvider = new QueryResultViewProvider();
+	const queryResultViewProvider = new QueryResultViewProvider(context.extensionPath);
 	QueryPanel.setResultViewProvider(queryResultViewProvider);
 
 	// 当前查询连接

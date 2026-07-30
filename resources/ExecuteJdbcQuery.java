@@ -11,8 +11,9 @@ public class ExecuteJdbcQuery {
         String jdbcUrl = args[1];
         String username = args[2];
         String password = args[3];
-        String schema = args[4];
-        String sql = args[5];
+        String database = args[4];
+        String schema = args[5];
+        String sql = args[6];
 
         if (!driverClassName.isEmpty()) {
             Class.forName(driverClassName);
@@ -27,6 +28,12 @@ public class ExecuteJdbcQuery {
         }
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, properties)) {
+            if (!database.isEmpty()) {
+                try {
+                    connection.setCatalog(database);
+                } catch (Exception ignored) {
+                }
+            }
             if (!schema.isEmpty()) {
                 try {
                     connection.setSchema(schema);

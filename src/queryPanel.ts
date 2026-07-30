@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
+import { QueryResultViewProvider } from './queryResultViewProvider';
 import { JavaExecutorUtil } from './util/JavaExecutorUtil';
 import { PathUtil } from './util/PathUtil';
 
@@ -16,27 +17,38 @@ interface QueryExecutionResult {
 export class QueryPanel {
 	private static readonly SQL_LANGUAGE_ID = 'sql';
 	private static currentPanel: QueryPanel | undefined;
+	private static resultViewProvider?: QueryResultViewProvider;
 
 	static get current(): QueryPanel | undefined {
 		return QueryPanel.currentPanel;
 	}
 
+	static setResultViewProvider(provider: QueryResultViewProvider): void {
+		QueryPanel.resultViewProvider = provider;
+	}
+
 	private _queryDocument?: vscode.TextDocument;
 	private _queryEditor?: vscode.TextEditor;
-	private _resultPanel?: vscode.WebviewPanel;
 	private _queryFilePath?: string;
 
+	/**
+	 * 显示查询面板
+	 * @param context 扩展上下文
+	 * @param connection 连接
+	 */
 	static show(context: vscode.ExtensionContext, connection?: ConnectionSettingsPayload): void {
 		if (!connection) {
 			vscode.window.showInformationMessage('请先选择一个连接。');
 			return;
 		}
 
+		// 显示查询面板
 		if (QueryPanel.currentPanel) {
 			void QueryPanel.currentPanel._reveal(connection);
 			return;
 		}
 
+		// 创建查询面板
 		QueryPanel.currentPanel = new QueryPanel(context, connection);
 		void QueryPanel.currentPanel._show();
 	}
@@ -50,7 +62,7 @@ export class QueryPanel {
 	// #region 面板显示
 	private async _show(): Promise<void> {
 		await this._openQueryEditor();
-		this._ensureResultPanel();
+		this._showResultMessage(`当前连接：${this._connection.name}`);
 		this._registerEditorListener();
 	}
 
@@ -61,8 +73,7 @@ export class QueryPanel {
 	private async _reveal(connection: ConnectionSettingsPayload): Promise<void> {
 		this._connection = connection;
 		await this._openQueryEditor();
-		this._ensureResultPanel();
-		this._updateResultHtml({ columns: [], rows: [], message: `当前连接：${this._connection.name}` });
+		this._showResultMessage(`当前连接：${this._connection.name}`);
 	}
 
 	// 打开查询编辑器
@@ -84,6 +95,10 @@ export class QueryPanel {
 		}
 	}
 
+	/**
+	 * 确保查询文件路径存在
+	 * @returns 查询文件路径
+	 */
 	private async _ensureQueryFilePath(): Promise<string> {
 		if (this._queryFilePath) {
 			return this._queryFilePath;
@@ -94,35 +109,13 @@ export class QueryPanel {
 			throw new Error('未找到项目目录。');
 		}
 
-		const queryDir = PathUtil.getJdbcTempDir();
+		const queryDir = await PathUtil.getJdbcTempDir();
 		await fs.promises.mkdir(queryDir, { recursive: true });
 		const safeFileName = this._connection.name.replace(/[\\/:*?"<>|]/g, '_');
 		const queryFilePath = PathUtil.join(queryDir, `${safeFileName}.sql`);
 		await fs.promises.writeFile(queryFilePath, '', 'utf8');
 		this._queryFilePath = queryFilePath;
 		return queryFilePath;
-	}
-
-	private _ensureResultPanel(): void {
-		if (this._resultPanel) {
-			this._resultPanel.reveal(vscode.ViewColumn.Two);
-			return;
-		}
-
-		this._resultPanel = vscode.window.createWebviewPanel(
-			'jdbcQueryResult',
-			`查询结果 - ${this._connection.name}`,
-			vscode.ViewColumn.Two,
-			{ enableScripts: false, retainContextWhenHidden: true }
-		);
-		this._resultPanel.onDidDispose(() => {
-			this._resultPanel = undefined;
-			this._queryDocument = undefined;
-			this._queryEditor = undefined;
-			void this._deleteQueryFile();
-			QueryPanel.currentPanel = undefined;
-		}, null, this._context.subscriptions);
-		this._updateResultHtml({ columns: [], rows: [], message: `当前连接：${this._connection.name}` });
 	}
 
 	private _registerEditorListener(): void {
@@ -140,7 +133,18 @@ export class QueryPanel {
 		await vscode.commands.executeCommand('setContext', 'jdbcQueryEditor', document.uri.fsPath === this._queryFilePath);
 	}
 
+	/**
+	 * 执行当前查询
+	 */
 	async executeCurrentQuery(): Promise<void> {
+		return this._executeQuery(false);
+	}
+
+	async executeSelectedQuery(): Promise<void> {
+		return this._executeQuery(true);
+	}
+
+	private async _executeQuery(onlySelection: boolean): Promise<void> {
 		const editor = this._queryEditor ?? vscode.window.activeTextEditor;
 		if (!editor || editor.document.uri.fsPath !== this._queryFilePath) {
 			vscode.window.showInformationMessage('请先打开 SQL 查询编辑器。');
@@ -148,13 +152,16 @@ export class QueryPanel {
 		}
 
 		const selectedSql = editor.selection.isEmpty ? '' : editor.document.getText(editor.selection).trim();
-		const sql = selectedSql || editor.document.getText().trim();
+		const sql = onlySelection ? selectedSql : (selectedSql || editor.document.getText().trim());
 		if (!sql) {
-			vscode.window.showWarningMessage('请输入 SQL。');
+			vscode.window.showWarningMessage(onlySelection ? '请先选中要执行的 SQL。' : '请输入 SQL。');
 			return;
 		}
 
-		const statusBar = vscode.window.setStatusBarMessage('正在执行 SQL 查询...');
+		const schema = this._connection.schema?.trim() ?? '';
+		const database = this._connection.database?.trim() ?? '';
+		const execArgs = database ? [database, schema, sql] : [schema, sql];
+		const statusBar = vscode.window.setStatusBarMessage(onlySelection ? '正在执行已选中 SQL...' : '正在执行 SQL 查询...');
 		try {
 			const stdout = await JavaExecutorUtil.runJavaTemplate(
 				{
@@ -168,16 +175,15 @@ export class QueryPanel {
 				},
 				'ExecuteJdbcQuery.java',
 				'ExecuteJdbcQuery',
-				[this._connection.schema?.trim() ?? '', sql],
-				'执行 SQL 查询'
+				execArgs,
+				onlySelection ? '执行已选中 SQL' : '执行 SQL 查询'
 			);
 			if (stdout === undefined) {
 				return;
 			}
 
 			const result = JSON.parse(stdout.trim()) as QueryExecutionResult;
-			this._ensureResultPanel();
-			this._updateResultHtml(result);
+			this._showResult(result);
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
 			vscode.window.showErrorMessage(`解析查询结果失败：${detail}`);
@@ -185,54 +191,18 @@ export class QueryPanel {
 			statusBar.dispose();
 		}
 	}
+
 	// #endregion
 
 	// #region 结果展示
-	private _updateResultHtml(result: QueryExecutionResult): void {
-		if (!this._resultPanel) {
-			return;
-		}
-
-		const columns = result.columns ?? [];
-		const rows = result.rows ?? [];
-		const message = this._escapeHtml(result.message ?? '');
-		const headerHtml = columns.map(column => `<th>${this._escapeHtml(column)}</th>`).join('');
-		const bodyHtml = rows.length
-			? rows.map(row => `<tr>${row.map(value => `<td>${this._escapeHtml(value ?? '')}</td>`).join('')}</tr>`).join('')
-			: `<tr><td colspan="${Math.max(columns.length, 1)}">暂无结果</td></tr>`;
-
-		this._resultPanel.title = `查询结果 - ${this._connection.name}`;
-		this._resultPanel.webview.html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-	<meta charset="UTF-8">
-	<title>查询结果</title>
-	<style>
-		body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 12px; }
-		.message { margin-bottom: 12px; color: var(--vscode-descriptionForeground); }
-		table { width: 100%; border-collapse: collapse; }
-		th, td { border: 1px solid var(--vscode-panel-border); padding: 6px 8px; text-align: left; vertical-align: top; }
-		th { background: var(--vscode-editorGroupHeader-tabsBackground); }
-	</style>
-</head>
-<body>
-	<div class="message">${message}</div>
-	<table>
-		<thead><tr>${headerHtml || '<th>结果</th>'}</tr></thead>
-		<tbody>${bodyHtml}</tbody>
-	</table>
-</body>
-</html>`;
+	private _showResult(result: QueryExecutionResult): void {
+		QueryPanel.resultViewProvider?.showResult(this._connection.name, result);
 	}
 
-	private _escapeHtml(value: string): string {
-		return value
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#39;');
+	private _showResultMessage(message: string): void {
+		QueryPanel.resultViewProvider?.showMessage(this._connection.name, message);
 	}
+	// #endregion
 
 	private async _deleteQueryFile(): Promise<void> {
 		if (!this._queryFilePath) {
@@ -247,5 +217,4 @@ export class QueryPanel {
 			this._queryFilePath = undefined;
 		}
 	}
-	// #endregion
 }

@@ -47,7 +47,7 @@ export class JavaExecutorUtil {
 			return undefined;
 		}
 
-		const tempDir = PathUtil.getJdbcTempDir();
+		const tempDir = await PathUtil.getJdbcTempDir();
 		const sourcePath = path.join(tempDir, templateFile);
 		const templatePath = path.join(context.extensionPath, 'resources', templateFile);
 		const classPath = `${driverPath}${path.delimiter}${tempDir}`;
@@ -91,7 +91,7 @@ export class JavaExecutorUtil {
 			vscode.window.showErrorMessage(`${actionName}失败：${detail}`);
 			return undefined;
 		} finally {
-			await fs.promises.rm(tempDir, { recursive: true, force: true });
+			
 		}
 	}
 }

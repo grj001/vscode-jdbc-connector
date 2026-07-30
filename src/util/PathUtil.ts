@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 
 /**
  * 路径工具
@@ -23,8 +24,10 @@ export class PathUtil {
 	 * 获取 JDBC 临时目录前缀
 	 * @returns 临时目录前缀
 	 */
-	static getJdbcTempDir(): string {
+	static async getJdbcTempDir(): Promise<string> {
 		const workspaceFolder = PathUtil.getWorkspacePath();
+		// 创建临时目录
+		await fs.promises.mkdir(path.join(workspaceFolder, 'jdbc-temp'), { recursive: true });
 		return path.join(workspaceFolder, 'jdbc-temp');
 	}
 

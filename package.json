@@ -11,7 +11,8 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onView:jdbcConnections"
+    "onView:jdbcConnections",
+    "onView:jdbcQueryResultView"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -22,6 +23,13 @@
           "title": "JDBC Connector",
           "icon": "resources/database.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "jdbcQueryPanel",
+          "title": "JDBC 查询结果",
+          "icon": "resources/database.svg"
+        }
       ]
     },
     "views": {
@@ -29,6 +37,13 @@
         {
           "id": "jdbcConnections",
           "name": "数据库连接",
+          "visibility": "visible"
+        }
+      ],
+      "jdbcQueryPanel": [
+        {
+          "id": "jdbcQueryResultView",
+          "name": "查询结果",
           "visibility": "visible"
         }
       ]
@@ -58,14 +73,24 @@
         "command": "vscode-jdbc-connector.executeQuery",
         "title": "执行查询",
         "icon": "$(play)"
+      },
+      {
+        "command": "vscode-jdbc-connector.executeSelectedQuery",
+        "title": "运行已选中",
+        "icon": "$(symbol-event)"
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "vscode-jdbc-connector.executeQuery",
-          "when": "resourceScheme == jdbc-sql",
-          "group": "navigation"
+          "when": "resourceExtname == .sql",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-jdbc-connector.executeSelectedQuery",
+          "when": "resourceExtname == .sql",
+          "group": "navigation@2"
         }
       ],
       "view/title": [

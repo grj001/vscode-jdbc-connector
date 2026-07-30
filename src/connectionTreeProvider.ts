@@ -1,13 +1,9 @@
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { promisify } from 'util';
-import { execFile } from 'child_process';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
 import { ConnectionTreeItem } from './entity/connectionTreeItem';
-
-const execFileAsync = promisify(execFile);
+import { JavaExecutorUtil } from './util/JavaExecutorUtil';
 
 /**
  * 数据库连接树提供者
@@ -15,6 +11,9 @@ const execFileAsync = promisify(execFile);
 export class ConnectionTreeProvider implements vscode.TreeDataProvider<ConnectionTreeItem> {
 	private static readonly EXTENSION_ID = 'undefined_publisher.vscode-jdbc-connector';
 	private static readonly PAGE_SIZE = 100;
+
+	constructor(private readonly _context: vscode.ExtensionContext) {
+	}
 
 	private _onDidChangeTreeData = new vscode.EventEmitter<ConnectionTreeItem | undefined>();
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -108,7 +107,20 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @returns 数据库子项
 	 */
 	private async getCatalogChildren(connection: ConnectionSettingsPayload): Promise<ConnectionTreeItem[]> {
-		const stdout = await this.runJavaTemplate(connection, 'ListJdbcCatalogs.java', 'ListJdbcCatalogs', [], `读取 ${connection.name} 的数据库`);
+		const stdout = await JavaExecutorUtil.runJavaTemplate(
+			{
+				extensionPath: this._context.extensionPath,
+				driverPath: connection.driverPath,
+				driverClassName: connection.driverClass,
+				jdbcUrl: connection.jdbcUrl,
+				username: connection.username,
+				password: connection.password
+			},
+			'ListJdbcCatalogs.java',
+			'ListJdbcCatalogs',
+			[],
+			`读取 ${connection.name} 的数据库`
+		);
 		if (stdout === undefined) {
 			return [];
 		}
@@ -139,7 +151,20 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @returns 模式子项
 	 */
 	private async getSchemaChildren(connection: ConnectionSettingsPayload, catalogName: string): Promise<ConnectionTreeItem[]> {
-		const stdout = await this.runJavaTemplate(connection, 'ListJdbcSchemas.java', 'ListJdbcSchemas', [catalogName], `读取 ${connection.name} 的模式`);
+		const stdout = await JavaExecutorUtil.runJavaTemplate(
+			{
+				extensionPath: this._context.extensionPath,
+				driverPath: connection.driverPath,
+				driverClassName: connection.driverClass,
+				jdbcUrl: connection.jdbcUrl,
+				username: connection.username,
+				password: connection.password
+			},
+			'ListJdbcSchemas.java',
+			'ListJdbcSchemas',
+			[catalogName],
+			`读取 ${connection.name} 的模式`
+		);
 		if (stdout === undefined) {
 			return [];
 		}
@@ -176,7 +201,20 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @returns 数据表子项
 	 */
 	private async getTableChildren(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string, begin: number, end: number): Promise<ConnectionTreeItem[]> {
-		const stdout = await this.runJavaTemplate(connection, 'ListJdbcTables.java', 'ListJdbcTables', [catalogName, schemaName, String(begin), String(end)], `读取 ${connection.name} 的数据表`);
+		const stdout = await JavaExecutorUtil.runJavaTemplate(
+			{
+				extensionPath: this._context.extensionPath,
+				driverPath: connection.driverPath,
+				driverClassName: connection.driverClass,
+				jdbcUrl: connection.jdbcUrl,
+				username: connection.username,
+				password: connection.password
+			},
+			'ListJdbcTables.java',
+			'ListJdbcTables',
+			[catalogName, schemaName, String(begin), String(end)],
+			`读取 ${connection.name} 的数据表`
+		);
 		if (stdout === undefined) {
 			return [];
 		}
@@ -215,56 +253,4 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		return `${connection.id}:${catalogName}:${schemaName}`;
 	}
 
-	/**
-	 * 运行 Java 模板
-	 * @param connection 连接
-	 * @param templateFile 模板文件
-	 * @param className 类名
-	 * @param args 参数
-	 * @param actionName 操作名称
-	 * @returns 输出
-	 */
-	private async runJavaTemplate(connection: ConnectionSettingsPayload, templateFile: string, className: string, args: string[], actionName: string): Promise<string | undefined> {
-		const driverPath = connection.driverPath?.trim();
-		const driverClassName = connection.driverClass?.trim();
-		if (!driverPath || !driverClassName) {
-			vscode.window.showErrorMessage(`连接 ${connection.name} 缺少驱动路径或驱动类。`);
-			return undefined;
-		}
-
-		const extension = vscode.extensions.getExtension(ConnectionTreeProvider.EXTENSION_ID)
-			?? vscode.extensions.all.find(item => item.packageJSON?.name === 'vscode-jdbc-connector');
-		if (!extension) {
-			vscode.window.showErrorMessage('未找到扩展资源目录。');
-			return undefined;
-		}
-
-		const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'vscode-jdbc-connector-'));
-		const sourcePath = path.join(tempDir, templateFile);
-		const templatePath = path.join(extension.extensionPath, 'resources', templateFile);
-		const classPath = `${driverPath}${path.delimiter}${tempDir}`;
-
-		try {
-			await fs.promises.copyFile(templatePath, sourcePath);
-			await execFileAsync('javac', [sourcePath], { cwd: tempDir, timeout: 15000, windowsHide: true });
-			const { stdout } = await execFileAsync('java', ['-Dfile.encoding=UTF-8', '-cp', classPath, className, driverClassName, connection.jdbcUrl.trim(), connection.username?.trim() ?? '', connection.password ?? '', ...args], { timeout: 15000, windowsHide: true });
-			return stdout;
-		} catch (error) {
-			const execError = error as NodeJS.ErrnoException & { stderr?: string; stdout?: string; killed?: boolean };
-			if (execError.code === 'ENOENT') {
-				const commandName = execError.message.includes('javac') ? 'javac' : 'java';
-				vscode.window.showErrorMessage(`未找到 ${commandName} 命令，请先安装并配置 Java 开发环境。`);
-				return undefined;
-			}
-			if (execError.killed) {
-				vscode.window.showErrorMessage(`${actionName}超时。`);
-				return undefined;
-			}
-			const detail = execError.stderr?.trim() || execError.stdout?.trim() || execError.message;
-			vscode.window.showErrorMessage(`${actionName}失败：${detail}`);
-			return undefined;
-		} finally {
-			await fs.promises.rm(tempDir, { recursive: true, force: true });
-		}
-	}
 }

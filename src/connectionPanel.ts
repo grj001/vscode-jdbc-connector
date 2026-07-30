@@ -1,12 +1,8 @@
-import { execFile } from 'child_process';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { promisify } from 'util';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
-
-const execFileAsync = promisify(execFile);
+import { JavaExecutorUtil } from './util/JavaExecutorUtil';
 
 /**
  * 数据库连接面板
@@ -137,50 +133,29 @@ export class ConnectionPanel {
 		}
 
 		const driverClassName = this._getDriverClassName(payload.driverType);
-		const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'vscode-jdbc-connector-'));
-		const sourcePath = path.join(tempDir, 'TestJdbcConnection.java');
-		const templatePath = path.join(this._context.extensionPath, 'resources', 'TestJdbcConnection.java');
-		const classPath = `${driverPath}${path.delimiter}${tempDir}`;
-
-		await fs.promises.copyFile(templatePath, sourcePath);
-		await execFileAsync('javac', [sourcePath], { cwd: tempDir, timeout: 15000, windowsHide: true });
-
 		const testMessage = vscode.window.setStatusBarMessage('正在测试 JDBC 连接...');
 		try {
-			const { stdout } = await execFileAsync(
-				'java',
-				[
-					'-Dfile.encoding=UTF-8',
-					'-cp',
-					classPath,
-					'TestJdbcConnection',
+			const stdout = await JavaExecutorUtil.runJavaTemplate(
+				{
+					extensionPath: this._context.extensionPath,
+					driverPath: payload.driverPath,
 					driverClassName,
-					payload.jdbcUrl.trim(),
-					payload.username?.trim() ?? '',
-					payload.password ?? '',
-					payload.schema?.trim() ?? ''
-				],
-				{ timeout: 15000, windowsHide: true }
+					jdbcUrl: payload.jdbcUrl,
+					username: payload.username,
+					password: payload.password
+				},
+				'TestJdbcConnection.java',
+				'TestJdbcConnection',
+				[payload.schema?.trim() ?? ''],
+				'连接测试'
 			);
+			if (stdout === undefined) {
+				return;
+			}
 			const detail = stdout.trim();
 			vscode.window.showInformationMessage(detail ? `连接测试成功：${detail}` : '连接测试成功。');
-		} catch (error) {
-			const execError = error as NodeJS.ErrnoException & { stderr?: string; stdout?: string; killed?: boolean };
-			if (execError.code === 'ENOENT') {
-				const commandName = execError.message.includes('javac') ? 'javac' : 'java';
-				vscode.window.showErrorMessage(`未找到 ${commandName} 命令，请先安装并配置 Java 开发环境。`);
-				return;
-			}
-			if (execError.killed) {
-				vscode.window.showErrorMessage('连接测试超时，请检查数据库地址、端口和驱动配置。');
-				return;
-			}
-
-			const detail = execError.stderr?.trim() || execError.stdout?.trim() || execError.message;
-			vscode.window.showErrorMessage(`连接测试失败：${detail}`);
 		} finally {
 			testMessage.dispose();
-			await fs.promises.rm(tempDir, { recursive: true, force: true });
 		}
 	}
 

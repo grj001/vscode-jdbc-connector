@@ -24,6 +24,7 @@ public class ListJdbcSchemas {
             properties.setProperty("password", password);
         }
 
+        // 连接数据库
         try (Connection connection = DriverManager.getConnection(jdbcUrl, properties)) {
             // 设置数据库
             if (!catalog.isEmpty()) {
@@ -32,6 +33,7 @@ public class ListJdbcSchemas {
                 } catch (Exception ignored) {
                 }
             }
+            // 获取数据库元数据
             DatabaseMetaData metaData = connection.getMetaData();
             try (ResultSet schemas = metaData.getSchemas(catalog.isEmpty() ? null : catalog, null)) {
                 while (schemas.next()) {

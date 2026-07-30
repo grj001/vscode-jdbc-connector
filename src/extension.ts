@@ -7,7 +7,7 @@ import { ConnectionTreeProvider } from './connectionTreeProvider';
 import { QueryPanel } from './queryPanel';
 
 export function activate(context: vscode.ExtensionContext) {
-	const treeProvider = new ConnectionTreeProvider();
+	const treeProvider = new ConnectionTreeProvider(context);
 	const treeView = vscode.window.createTreeView('jdbcConnections', {
 		treeDataProvider: treeProvider,
 		showCollapseAll: false

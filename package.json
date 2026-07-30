@@ -47,7 +47,8 @@
         {
           "id": "jdbcQueryResultView",
           "name": "查询结果",
-          "visibility": "visible"
+          "visibility": "visible",
+          "type": "webview"
         }
       ]
     },

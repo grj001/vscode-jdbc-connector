@@ -14,6 +14,8 @@ export function activate(context: vscode.ExtensionContext) {
 		treeDataProvider: treeProvider,
 		showCollapseAll: false
 	});
+
+
 	// 创建查询结果视图
 	const queryResultViewProvider = new QueryResultViewProvider();
 	QueryPanel.setResultViewProvider(queryResultViewProvider);
@@ -35,6 +37,9 @@ export function activate(context: vscode.ExtensionContext) {
 		QueryPanel.show(context, targetItem.connection);
 		void queryResultViewProvider.reveal();
 	};
+
+	// #region 注册命令
+
 
 	// 新建连接
 	const newConnectionCmd = vscode.commands.registerCommand(
@@ -85,15 +90,21 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	// 刷新连接
 	const refreshCmd = vscode.commands.registerCommand(
 		'vscode-jdbc-connector.refreshConnections',
 		() => treeProvider.refresh()
 	);
 
+	// #endregion
+
+	// 当连接树视图选择项改变时触发
 	const selectionDisposable = treeView.onDidChangeSelection((event) => {
 		currentQueryConnection = event.selection[0];
+		treeProvider.setSelection(event.selection[0]);
 	});
 
+	// 当连接树视图可见性改变时触发
 	const visibilityDisposable = treeView.onDidChangeVisibility((event) => {
 		if (event.visible) {
 			treeProvider.refresh();
@@ -111,6 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	revealView();
 
+	// 注册命令
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(QueryResultViewProvider.VIEW_ID, queryResultViewProvider),
 		treeView,

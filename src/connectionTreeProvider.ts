@@ -22,11 +22,24 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	// 每个模式的表范围
 	private readonly schemaRangeMap = new Map<string, number>();
 	private readonly connectionCacheMap = new Map<string, ConnectionCacheData>();
+	private _currentSelection?: ConnectionTreeItem;
 
 	refresh(): void {
 		this.schemaRangeMap.clear();
 		this.connectionCacheMap.clear();
+		const connectionId = this._currentSelection?.connection?.id;
+		if (connectionId) {
+			void ConnectionCacheUtil.removeConnectionCache(connectionId);
+		}
 		this._onDidChangeTreeData.fire(undefined);
+	}
+
+	/**
+	 * 设置当前选中项
+	 * @param item 当前选中项
+	 */
+	setSelection(item?: ConnectionTreeItem): void {
+		this._currentSelection = item;
 	}
 
 	/**
@@ -38,6 +51,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			return;
 		}
 
+		// 更新缓存范围
 		this.schemaRangeMap.set(this.getSchemaKey(item.connection, item.catalogName, item.schemaName), item.end ?? ConnectionTreeProvider.PAGE_SIZE);
 		this._onDidChangeTreeData.fire(undefined);
 	}
@@ -71,7 +85,13 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		if (element?.contextValue === 'schema' && element.connection && element.catalogName && element.schemaName) {
 			const schemaKey = this.getSchemaKey(element.connection, element.catalogName, element.schemaName);
 			const end = this.schemaRangeMap.get(schemaKey) ?? ConnectionTreeProvider.PAGE_SIZE;
-			return this.getTableChildren(element.connection, element.catalogName, element.schemaName, 0, end);
+			return this.getTableChildren(
+				element.connection
+				, element.catalogName
+				, element.schemaName
+				, 0
+				, end
+			);
 		}
 
 		const workspaceFolder = PathUtil.getWorkspacePath();
@@ -241,15 +261,32 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @param end 结束索引
 	 * @returns 数据表子项
 	 */
-	private async getTableChildren(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string, begin: number, end: number): Promise<ConnectionTreeItem[]> {
+	private async getTableChildren(
+		connection: ConnectionSettingsPayload
+		, catalogName: string
+		, schemaName: string
+		, begin: number
+		, end: number
+	): Promise<ConnectionTreeItem[]> {
+
+		// 从缓存中获取
 		const cachedConnectionData = await this.getOrLoadConnectionCache(connection);
 		const cachedSchema = cachedConnectionData?.catalogs
 			.find(catalog => catalog.name === catalogName)
 			?.schemas.find(schema => schema.name === schemaName);
 		if (cachedSchema?.tables.length) {
-			return this.createTableItems(connection, catalogName, schemaName, cachedSchema.tables.slice(begin, end), begin, end, cachedSchema.tables.length > end);
+			return this.createTableItems(
+				connection
+				, catalogName
+				, schemaName
+				, cachedSchema.tables
+				, begin
+				, end
+				, cachedSchema.tables.length > end
+			);
 		}
 
+		// 从数据库读取
 		const stdout = await JavaExecutorUtil.runJavaTemplate(
 			{
 				extensionPath: this._context.extensionPath,
@@ -262,7 +299,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			},
 			'ListJdbcTables.java',
 			'ListJdbcTables',
-			[catalogName, schemaName, String(begin), String(end)],
+			[catalogName, schemaName],
 			`读取 ${connection.name} 的数据表`
 		);
 		if (stdout === undefined) {
@@ -273,7 +310,15 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		if (tableNames.length) {
 			await this.saveTableCache(connection, catalogName, schemaName, begin, tableNames);
 		}
-		return this.createTableItems(connection, catalogName, schemaName, tableNames, begin, end, tableNames.length === end - begin);
+		return this.createTableItems(
+			connection
+			, catalogName
+			, schemaName
+			, tableNames
+			, begin
+			, end
+			, tableNames.length > end
+		);
 	}
 
 	/**
@@ -283,7 +328,11 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @param schemaName 模式名称
 	 * @returns 模式键
 	 */
-	private getSchemaKey(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string): string {
+	private getSchemaKey(
+		connection: ConnectionSettingsPayload
+		, catalogName: string
+		, schemaName: string
+	): string {
 		return `${connection.id}:${catalogName}:${schemaName}`;
 	}
 
@@ -358,8 +407,42 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		return schema;
 	}
 
-	private createTableItems(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string, tableNames: string[], begin: number, end: number, hasMore: boolean): ConnectionTreeItem[] {
-		const items = tableNames.map(name => new ConnectionTreeItem(name, vscode.TreeItemCollapsibleState.None, undefined, undefined, 'table'));
+	
+	// #endregion
+
+
+	/**
+	 * 创建表项
+	 * @param connection 连接
+	 * @param catalogName 数据库名称
+	 * @param schemaName 模式名称
+	 * @param tableNames 表名列表
+	 * @param begin 开始索引
+	 * @param end 结束索引
+	 * @param hasMore 是否还有更多表
+	 * @returns 表项列表
+	 */
+	private createTableItems(
+		connection: ConnectionSettingsPayload
+		, catalogName: string
+		, schemaName: string
+		, tableNames: string[]
+		, begin: number
+		, end: number
+		, hasMore: boolean
+	): ConnectionTreeItem[] {
+		// 创建表项
+		const items = tableNames.slice(begin, end).map(name => new ConnectionTreeItem(
+			name
+			, vscode.TreeItemCollapsibleState.None
+			, undefined
+			, connection
+			, 'table'
+			, catalogName
+			, schemaName
+			, begin
+			, end
+		));
 		if (hasMore) {
 			items.push(new ConnectionTreeItem(
 				`查看更多 ${end}-${end + ConnectionTreeProvider.PAGE_SIZE}`,
@@ -379,6 +462,5 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		}
 		return items;
 	}
-	// #endregion
 
 }

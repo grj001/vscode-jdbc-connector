@@ -12,8 +12,6 @@ public class ListJdbcTables {
         String password = args[3];
         String catalog = args[4];
         String schema = args[5];
-        int begin = Integer.parseInt(args[6]);
-        int end = Integer.parseInt(args[7]);
 
         if (!driverClassName.isEmpty()) {
             Class.forName(driverClassName);
@@ -55,18 +53,7 @@ public class ListJdbcTables {
                         continue;
                     }
 
-                    if (index >= begin && index < end) {
-                        if (schemaName != null && !schemaName.isEmpty()) {
-                            System.out.println(schemaName + "." + tableName);
-                        } else {
-                            System.out.println(tableName);
-                        }
-                    }
-
-                    index++;
-                    if (index >= end) {
-                        break;
-                    }
+                    System.out.println(schemaName + "." + tableName);
                 }
             }
         }

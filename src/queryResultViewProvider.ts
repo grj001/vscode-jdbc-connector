@@ -21,29 +21,37 @@ export class QueryResultViewProvider implements vscode.WebviewViewProvider {
 		this._view.webview.options = { enableScripts: false };
 		if (this._pendingReveal) {
 			this._pendingReveal = false;
-			void this._view.show(true);
 		}
 		this._render();
 	}
 
 	async reveal(): Promise<void> {
 		if (this._view) {
-			await this._view.show(true);
+			this._render();
+			await vscode.commands.executeCommand('workbench.action.focusPanel');
 			return;
 		}
 		this._pendingReveal = true;
-		await vscode.commands.executeCommand(`${QueryResultViewProvider.VIEW_ID}.focus`);
+		await vscode.commands.executeCommand('workbench.action.focusPanel');
 	}
 
 	showResult(connectionName: string, result: QueryExecutionResult): void {
 		this._connectionName = connectionName;
 		this._result = result;
+		if (!this._view) {
+			void this.reveal();
+			return;
+		}
 		this._render();
 	}
 
 	showMessage(connectionName: string, message: string): void {
 		this._connectionName = connectionName;
 		this._result = { columns: [], rows: [], message };
+		if (!this._view) {
+			void this.reveal();
+			return;
+		}
 		this._render();
 	}
 

@@ -47,7 +47,7 @@ export class JavaExecutorUtil {
 			return undefined;
 		}
 
-		const tempDir = await fs.promises.mkdtemp(PathUtil.getJdbcTempDir());
+		const tempDir = PathUtil.getJdbcTempDir();
 		const sourcePath = path.join(tempDir, templateFile);
 		const templatePath = path.join(context.extensionPath, 'resources', templateFile);
 		const classPath = `${driverPath}${path.delimiter}${tempDir}`;

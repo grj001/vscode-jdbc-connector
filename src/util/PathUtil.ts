@@ -21,7 +21,6 @@ export class PathUtil {
 
 	/**
 	 * 获取 JDBC 临时目录前缀
-	 * @param workspacePath 项目目录
 	 * @returns 临时目录前缀
 	 */
 	static getJdbcTempDir(): string {
@@ -31,7 +30,6 @@ export class PathUtil {
 
 	/**
 	 * 获取项目 .vscode 目录
-	 * @param workspacePath 项目目录
 	 * @returns .vscode 目录
 	 */
 	static getWorkspaceVscodeDir(): string {

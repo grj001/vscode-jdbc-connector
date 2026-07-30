@@ -12,7 +12,10 @@
   "activationEvents": [
     "onStartupFinished",
     "onView:jdbcConnections",
-    "onView:jdbcQueryResultView"
+    "onView:jdbcQueryResultView",
+    "onCommand:vscode-jdbc-connector.newQuery",
+    "onCommand:vscode-jdbc-connector.executeQuery",
+    "onCommand:vscode-jdbc-connector.executeSelectedQuery"
   ],
   "main": "./out/extension.js",
   "contributes": {

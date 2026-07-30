@@ -9,13 +9,16 @@ import { QueryResultViewProvider } from './queryResultViewProvider';
 
 export function activate(context: vscode.ExtensionContext) {
 	const treeProvider = new ConnectionTreeProvider(context);
+	// 创建连接树视图
 	const treeView = vscode.window.createTreeView('jdbcConnections', {
 		treeDataProvider: treeProvider,
 		showCollapseAll: false
 	});
+	// 创建查询结果视图
 	const queryResultViewProvider = new QueryResultViewProvider();
 	QueryPanel.setResultViewProvider(queryResultViewProvider);
 
+	// 当前查询连接
 	let currentQueryConnection: ConnectionTreeItem | undefined;
 
 	const openConnectionPanel = () => ConnectionPanel.show(context);
@@ -28,8 +31,9 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		currentQueryConnection = targetItem;
+		// 显示查询面板
 		QueryPanel.show(context, targetItem.connection);
-		void vscode.commands.executeCommand('jdbcQueryResultView.focus');
+		void queryResultViewProvider.reveal();
 	};
 
 	// 新建连接
@@ -50,6 +54,7 @@ export function activate(context: vscode.ExtensionContext) {
 		() => QueryPanel.current?.executeCurrentQuery()
 	);
 
+	// 执行选中查询
 	const executeSelectedQueryCmd = vscode.commands.registerCommand(
 		'vscode-jdbc-connector.executeSelectedQuery',
 		() => QueryPanel.current?.executeSelectedQuery()

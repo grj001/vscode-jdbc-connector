@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
+import { ConnectionCacheUtil } from './util/ConnectionCacheUtil';
 import { JavaExecutorUtil } from './util/JavaExecutorUtil';
 import { PathUtil } from './util/PathUtil';
 
@@ -101,6 +102,7 @@ export class ConnectionPanel {
 		currentSettings['vscode-jdbc-connector.connections'] = connections;
 
 		await fs.promises.writeFile(settingsPath, `${JSON.stringify(currentSettings, null, 2)}\n`, 'utf8');
+		await ConnectionCacheUtil.removeConnectionCache(payload.id);
 
 		// 刷新连接树视图
 		await vscode.commands.executeCommand('vscode-jdbc-connector.refreshConnections');

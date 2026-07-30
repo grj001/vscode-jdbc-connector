@@ -12,13 +12,27 @@ interface QueryExecutionResult {
 export class QueryResultViewProvider implements vscode.WebviewViewProvider {
 	static readonly VIEW_ID = 'jdbcQueryResultView';
 	private _view?: vscode.WebviewView;
+	private _pendingReveal = false;
 	private _connectionName = '';
 	private _result: QueryExecutionResult = { columns: [], rows: [], message: '' };
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void | Thenable<void> {
 		this._view = webviewView;
 		this._view.webview.options = { enableScripts: false };
+		if (this._pendingReveal) {
+			this._pendingReveal = false;
+			void this._view.show(true);
+		}
 		this._render();
+	}
+
+	async reveal(): Promise<void> {
+		if (this._view) {
+			await this._view.show(true);
+			return;
+		}
+		this._pendingReveal = true;
+		await vscode.commands.executeCommand(`${QueryResultViewProvider.VIEW_ID}.focus`);
 	}
 
 	showResult(connectionName: string, result: QueryExecutionResult): void {

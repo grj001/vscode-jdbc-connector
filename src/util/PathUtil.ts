@@ -27,8 +27,8 @@ export class PathUtil {
 	static async getJdbcTempDir(): Promise<string> {
 		const workspaceFolder = PathUtil.getWorkspacePath();
 		// 创建临时目录
-		await fs.promises.mkdir(path.join(workspaceFolder, 'jdbc-temp'), { recursive: true });
-		return path.join(workspaceFolder, 'jdbc-temp');
+		await fs.promises.mkdir(path.join(workspaceFolder, '.jdbc-temp'), { recursive: true });
+		return path.join(workspaceFolder, '.jdbc-temp');
 	}
 
 	/**

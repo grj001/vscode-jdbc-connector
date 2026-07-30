@@ -100,22 +100,20 @@ export class QueryPanel {
 	 * @returns 查询文件路径
 	 */
 	private async _ensureQueryFilePath(): Promise<string> {
-		if (this._queryFilePath) {
-			return this._queryFilePath;
-		}
-
-		const workspaceFolder = PathUtil.getWorkspacePath();
-		if (!workspaceFolder) {
-			throw new Error('未找到项目目录。');
-		}
-
 		const queryDir = await PathUtil.getJdbcTempDir();
 		await fs.promises.mkdir(queryDir, { recursive: true });
 		const safeFileName = this._connection.name.replace(/[\\/:*?"<>|]/g, '_');
 		const queryFilePath = PathUtil.join(queryDir, `${safeFileName}.sql`);
-		await fs.promises.writeFile(queryFilePath, '', 'utf8');
-		this._queryFilePath = queryFilePath;
-		return queryFilePath;
+		if (!this._queryFilePath || this._queryFilePath !== queryFilePath) {
+			this._queryFilePath = queryFilePath;
+		}
+		try {
+			await fs.promises.access(queryFilePath, fs.constants.F_OK);
+			return queryFilePath;
+		} catch {
+			await fs.promises.writeFile(queryFilePath, '', 'utf8');
+			return queryFilePath;
+		}
 	}
 
 	private _registerEditorListener(): void {
@@ -140,10 +138,17 @@ export class QueryPanel {
 		return this._executeQuery(false);
 	}
 
+	/**
+	 * 执行选中查询
+	 */
 	async executeSelectedQuery(): Promise<void> {
 		return this._executeQuery(true);
 	}
 
+	/**
+	 * 执行查询
+	 * @param onlySelection 是否仅执行选中 SQL
+	 */
 	private async _executeQuery(onlySelection: boolean): Promise<void> {
 		const editor = this._queryEditor ?? vscode.window.activeTextEditor;
 		if (!editor || editor.document.uri.fsPath !== this._queryFilePath) {

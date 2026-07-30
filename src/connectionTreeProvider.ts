@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
 import { ConnectionTreeItem } from './entity/connectionTreeItem';
+import { ConnectionCacheData, ConnectionCacheUtil } from './util/ConnectionCacheUtil';
 import { JavaExecutorUtil } from './util/JavaExecutorUtil';
 import { PathUtil } from './util/PathUtil';
 
@@ -20,9 +21,11 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 	// 每个模式的表范围
 	private readonly schemaRangeMap = new Map<string, number>();
+	private readonly connectionCacheMap = new Map<string, ConnectionCacheData>();
 
 	refresh(): void {
 		this.schemaRangeMap.clear();
+		this.connectionCacheMap.clear();
 		this._onDidChangeTreeData.fire(undefined);
 	}
 
@@ -108,6 +111,19 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @returns 数据库子项
 	 */
 	private async getCatalogChildren(connection: ConnectionSettingsPayload): Promise<ConnectionTreeItem[]> {
+		const cachedConnectionData = await this.getOrLoadConnectionCache(connection);
+		const cachedCatalogs = cachedConnectionData?.catalogs ?? [];
+		if (cachedCatalogs.length) {
+			return cachedCatalogs.map(catalog => new ConnectionTreeItem(
+				catalog.name,
+				vscode.TreeItemCollapsibleState.Collapsed,
+				undefined,
+				connection,
+				'catalog',
+				catalog.name
+			));
+		}
+
 		const stdout = await JavaExecutorUtil.runJavaTemplate(
 			{
 				extensionPath: this._context.extensionPath,
@@ -128,6 +144,9 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		}
 
 		const catalogNames = stdout.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+		if (catalogNames.length) {
+			await this.saveCatalogCache(connection, catalogNames);
+		}
 		if (!catalogNames.length) {
 			const defaultCatalog = connection.database?.trim();
 			if (!defaultCatalog) {
@@ -153,6 +172,22 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @returns 模式子项
 	 */
 	private async getSchemaChildren(connection: ConnectionSettingsPayload, catalogName: string): Promise<ConnectionTreeItem[]> {
+		const cachedConnectionData = await this.getOrLoadConnectionCache(connection);
+		const cachedCatalog = cachedConnectionData?.catalogs.find(catalog => catalog.name === catalogName);
+		if (cachedCatalog?.schemas.length) {
+			return cachedCatalog.schemas.map(schema => new ConnectionTreeItem(
+				schema.name,
+				vscode.TreeItemCollapsibleState.Collapsed,
+				undefined,
+				connection,
+				'schema',
+				catalogName,
+				schema.name,
+				0,
+				ConnectionTreeProvider.PAGE_SIZE
+			));
+		}
+
 		const stdout = await JavaExecutorUtil.runJavaTemplate(
 			{
 				extensionPath: this._context.extensionPath,
@@ -173,6 +208,9 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		}
 
 		const schemaNames = stdout.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+		if (schemaNames.length) {
+			await this.saveSchemaCache(connection, catalogName, schemaNames);
+		}
 		if (!schemaNames.length) {
 			const defaultSchema = connection.schema?.trim();
 			if (!defaultSchema) {
@@ -204,6 +242,14 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @returns 数据表子项
 	 */
 	private async getTableChildren(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string, begin: number, end: number): Promise<ConnectionTreeItem[]> {
+		const cachedConnectionData = await this.getOrLoadConnectionCache(connection);
+		const cachedSchema = cachedConnectionData?.catalogs
+			.find(catalog => catalog.name === catalogName)
+			?.schemas.find(schema => schema.name === schemaName);
+		if (cachedSchema?.tables.length) {
+			return this.createTableItems(connection, catalogName, schemaName, cachedSchema.tables.slice(begin, end), begin, end, cachedSchema.tables.length > end);
+		}
+
 		const stdout = await JavaExecutorUtil.runJavaTemplate(
 			{
 				extensionPath: this._context.extensionPath,
@@ -224,8 +270,97 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		}
 
 		const tableNames = stdout.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+		if (tableNames.length) {
+			await this.saveTableCache(connection, catalogName, schemaName, begin, tableNames);
+		}
+		return this.createTableItems(connection, catalogName, schemaName, tableNames, begin, end, tableNames.length === end - begin);
+	}
+
+	/**
+	 * 获取模式键
+	 * @param connection 连接
+	 * @param catalogName 数据库名称
+	 * @param schemaName 模式名称
+	 * @returns 模式键
+	 */
+	private getSchemaKey(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string): string {
+		return `${connection.id}:${catalogName}:${schemaName}`;
+	}
+
+	// #region 缓存处理
+	/**
+	 * 获取或加载连接缓存
+	 * @param connection 连接
+	 * @returns 连接缓存数据
+	 */
+	private async getOrLoadConnectionCache(connection: ConnectionSettingsPayload): Promise<ConnectionCacheData | undefined> {
+		const cacheKey = connection.id;
+		// 从内存缓存中获取
+		const memoryCache = this.connectionCacheMap.get(cacheKey);
+		if (memoryCache) {
+			return memoryCache;
+		}
+		// 从文件读取缓存
+		const fileCache = await ConnectionCacheUtil.readConnectionCache(cacheKey);
+		if (fileCache) {
+			this.connectionCacheMap.set(cacheKey, fileCache);
+		}
+		return fileCache;
+	}
+
+	private async saveCatalogCache(connection: ConnectionSettingsPayload, catalogNames: string[]): Promise<void> {
+		const connectionCacheData = await this.getOrLoadConnectionCache(connection) ?? { catalogs: [] };
+		connectionCacheData.catalogs = catalogNames.map(name => ({ name, schemas: [] }));
+		this.connectionCacheMap.set(connection.id, connectionCacheData);
+		await ConnectionCacheUtil.writeConnectionCache(connection.id, connectionCacheData);
+	}
+
+	private async saveSchemaCache(connection: ConnectionSettingsPayload, catalogName: string, schemaNames: string[]): Promise<void> {
+		const connectionCacheData = await this.getOrLoadConnectionCache(connection) ?? { catalogs: [] };
+		const catalog = this.getOrCreateCatalogCache(connectionCacheData, catalogName);
+		catalog.schemas = schemaNames.map(name => ({ name, tables: [] }));
+		this.connectionCacheMap.set(connection.id, connectionCacheData);
+		await ConnectionCacheUtil.writeConnectionCache(connection.id, connectionCacheData);
+	}
+
+	private async saveTableCache(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string, begin: number, tableNames: string[]): Promise<void> {
+		const connectionCacheData = await this.getOrLoadConnectionCache(connection) ?? { catalogs: [] };
+		const catalog = this.getOrCreateCatalogCache(connectionCacheData, catalogName);
+		const schema = this.getOrCreateSchemaCache(catalog, schemaName);
+		if (begin === 0) {
+			schema.tables = [...tableNames];
+		} else {
+			const nextTables = [...schema.tables];
+			nextTables.splice(begin, tableNames.length, ...tableNames);
+			schema.tables = nextTables;
+		}
+		this.connectionCacheMap.set(connection.id, connectionCacheData);
+		await ConnectionCacheUtil.writeConnectionCache(connection.id, connectionCacheData);
+	}
+
+	private getOrCreateCatalogCache(connectionCacheData: ConnectionCacheData, catalogName: string): ConnectionCacheData['catalogs'][number] {
+		let catalog = connectionCacheData.catalogs.find(item => item.name === catalogName);
+		if (catalog) {
+			return catalog;
+		}
+		catalog = { name: catalogName, schemas: [] };
+		connectionCacheData.catalogs.push(catalog);
+		return catalog;
+	}
+
+	private getOrCreateSchemaCache(catalog: ConnectionCacheData['catalogs'][number], schemaName: string): ConnectionCacheData['catalogs'][number]['schemas'][number] {
+		let schema = catalog.schemas.find(item => item.name === schemaName);
+		if (schema) {
+			return schema;
+		}
+		schema = { name: schemaName, tables: [] };
+		catalog.schemas.push(schema);
+		return schema;
+	}
+
+	private createTableItems(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string, tableNames: string[], begin: number, end: number, hasMore: boolean): ConnectionTreeItem[] {
 		const items = tableNames.map(name => new ConnectionTreeItem(name, vscode.TreeItemCollapsibleState.None, undefined, undefined, 'table'));
-		if (tableNames.length === end - begin) {
+		if (hasMore) {
 			items.push(new ConnectionTreeItem(
 				`查看更多 ${end}-${end + ConnectionTreeProvider.PAGE_SIZE}`,
 				vscode.TreeItemCollapsibleState.None,
@@ -242,19 +377,8 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 				end + ConnectionTreeProvider.PAGE_SIZE
 			));
 		}
-
 		return items;
 	}
-
-	/**
-	 * 获取模式键
-	 * @param connection 连接
-	 * @param catalogName 数据库名称
-	 * @param schemaName 模式名称
-	 * @returns 模式键
-	 */
-	private getSchemaKey(connection: ConnectionSettingsPayload, catalogName: string, schemaName: string): string {
-		return `${connection.id}:${catalogName}:${schemaName}`;
-	}
+	// #endregion
 
 }

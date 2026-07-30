@@ -48,9 +48,26 @@
         "command": "vscode-jdbc-connector.editConnection",
         "title": "编辑连接",
         "icon": "$(edit)"
+      },
+      {
+        "command": "vscode-jdbc-connector.newQuery",
+        "title": "新建查询",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "vscode-jdbc-connector.executeQuery",
+        "title": "执行查询",
+        "icon": "$(play)"
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "vscode-jdbc-connector.executeQuery",
+          "when": "resourceScheme == jdbc-sql",
+          "group": "navigation"
+        }
+      ],
       "view/title": [
         {
           "command": "vscode-jdbc-connector.newConnection",
@@ -64,6 +81,11 @@
         },
         {
           "command": "vscode-jdbc-connector.editConnection",
+          "when": "view == jdbcConnections",
+          "group": "navigation"
+        },
+        {
+          "command": "vscode-jdbc-connector.newQuery",
           "when": "view == jdbcConnections",
           "group": "navigation"
         }

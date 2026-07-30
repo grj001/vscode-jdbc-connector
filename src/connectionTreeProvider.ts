@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
 import { ConnectionTreeItem } from './entity/connectionTreeItem';
 import { JavaExecutorUtil } from './util/JavaExecutorUtil';
+import { PathUtil } from './util/PathUtil';
 
 /**
  * 数据库连接树提供者
@@ -70,12 +71,12 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			return this.getTableChildren(element.connection, element.catalogName, element.schemaName, 0, end);
 		}
 
-		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		const workspaceFolder = PathUtil.getWorkspacePath();
 		if (!workspaceFolder) {
 			return [];
 		}
 
-		const settingsPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'settings.json');
+		const settingsPath = path.join(workspaceFolder, '.vscode', 'settings.json');
 		let currentSettings: Record<string, unknown> = {};
 		try {
 			const raw = fs.readFileSync(settingsPath, 'utf8');
@@ -110,6 +111,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		const stdout = await JavaExecutorUtil.runJavaTemplate(
 			{
 				extensionPath: this._context.extensionPath,
+				workspacePath: PathUtil.getWorkspacePath(),
 				driverPath: connection.driverPath,
 				driverClassName: connection.driverClass,
 				jdbcUrl: connection.jdbcUrl,
@@ -154,6 +156,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		const stdout = await JavaExecutorUtil.runJavaTemplate(
 			{
 				extensionPath: this._context.extensionPath,
+				workspacePath: PathUtil.getWorkspacePath(),
 				driverPath: connection.driverPath,
 				driverClassName: connection.driverClass,
 				jdbcUrl: connection.jdbcUrl,
@@ -204,6 +207,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		const stdout = await JavaExecutorUtil.runJavaTemplate(
 			{
 				extensionPath: this._context.extensionPath,
+				workspacePath: PathUtil.getWorkspacePath(),
 				driverPath: connection.driverPath,
 				driverClassName: connection.driverClass,
 				jdbcUrl: connection.jdbcUrl,

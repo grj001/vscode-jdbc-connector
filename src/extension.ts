@@ -13,17 +13,37 @@ export function activate(context: vscode.ExtensionContext) {
 		showCollapseAll: false
 	});
 
-	const openConnectionPanel = () => ConnectionPanel.show(context);
-	const openQueryPanel = () => QueryPanel.show(context);
+	let currentQueryConnection: ConnectionTreeItem | undefined;
 
+	const openConnectionPanel = () => ConnectionPanel.show(context);
+
+	// 打开查询面板
+	const openQueryPanel = (item?: ConnectionTreeItem) => {
+		const targetItem = item ?? treeView.selection[0] ?? currentQueryConnection;
+		if (!targetItem?.connection) {
+			vscode.window.showInformationMessage('请先选择一个连接。');
+			return;
+		}
+		currentQueryConnection = targetItem;
+		QueryPanel.show(context, targetItem.connection);
+	};
+
+	// 新建连接
 	const newConnectionCmd = vscode.commands.registerCommand(
 		'vscode-jdbc-connector.newConnection',
 		openConnectionPanel
 	);
 
+	// 新建查询
 	const newQueryCmd = vscode.commands.registerCommand(
 		'vscode-jdbc-connector.newQuery',
 		openQueryPanel
+	);
+
+	// 执行查询
+	const executeQueryCmd = vscode.commands.registerCommand(
+		'vscode-jdbc-connector.executeQuery',
+		() => QueryPanel.current?.executeCurrentQuery()
 	);
 
 	// 编辑连接
@@ -39,6 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	// 加载更多数据库
 	const loadMoreTablesCmd = vscode.commands.registerCommand(
 		'vscode-jdbc-connector.loadMoreTables',
 		(item?: ConnectionTreeItem) => {
@@ -54,6 +75,10 @@ export function activate(context: vscode.ExtensionContext) {
 		'vscode-jdbc-connector.refreshConnections',
 		() => treeProvider.refresh()
 	);
+
+	const selectionDisposable = treeView.onDidChangeSelection((event) => {
+		currentQueryConnection = event.selection[0];
+	});
 
 	const visibilityDisposable = treeView.onDidChangeVisibility((event) => {
 		if (event.visible) {
@@ -74,9 +99,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		treeView,
+		selectionDisposable,
 		visibilityDisposable,
 		newConnectionCmd,
 		newQueryCmd,
+		executeQueryCmd,
 		editConnectionCmd,
 		loadMoreTablesCmd,
 		refreshCmd

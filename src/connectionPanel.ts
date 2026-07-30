@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
 import { JavaExecutorUtil } from './util/JavaExecutorUtil';
+import { PathUtil } from './util/PathUtil';
 
 /**
  * 数据库连接面板
@@ -62,13 +63,13 @@ export class ConnectionPanel {
 	 * @returns HTML内容
 	 */
 	private async _saveOrUpdateConnection(payload: ConnectionSettingsPayload): Promise<void> {
-		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		const workspaceFolder = PathUtil.getWorkspacePath();
 		if (!workspaceFolder) {
 			vscode.window.showWarningMessage('请先打开一个工作区后再保存连接。');
 			return;
 		}
 
-		const settingsDir = path.join(workspaceFolder.uri.fsPath, '.vscode');
+		const settingsDir = path.join(workspaceFolder, '.vscode');
 		const settingsPath = path.join(settingsDir, 'settings.json');
 		await fs.promises.mkdir(settingsDir, { recursive: true });
 
@@ -104,7 +105,7 @@ export class ConnectionPanel {
 		// 刷新连接树视图
 		await vscode.commands.executeCommand('vscode-jdbc-connector.refreshConnections');
 
-		vscode.window.showInformationMessage(`连接已保存到 ${path.relative(workspaceFolder.uri.fsPath, settingsPath)}`);
+		vscode.window.showInformationMessage(`连接已保存到 ${path.relative(workspaceFolder, settingsPath)}`);
 	}
 
 
@@ -138,6 +139,7 @@ export class ConnectionPanel {
 			const stdout = await JavaExecutorUtil.runJavaTemplate(
 				{
 					extensionPath: this._context.extensionPath,
+					workspacePath: PathUtil.getWorkspacePath(),
 					driverPath: payload.driverPath,
 					driverClassName,
 					jdbcUrl: payload.jdbcUrl,

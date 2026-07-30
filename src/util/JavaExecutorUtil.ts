@@ -12,6 +12,7 @@ const execFileAsync = promisify(execFile);
  */
 export interface JavaExecutionContext {
 	readonly extensionPath: string;
+	readonly workspacePath: string;
 	readonly driverPath: string;
 	readonly driverClassName: string;
 	readonly jdbcUrl: string;
@@ -46,7 +47,7 @@ export class JavaExecutorUtil {
 			return undefined;
 		}
 
-		const tempDir = await fs.promises.mkdtemp(PathUtil.getJdbcTempDirPrefix());
+		const tempDir = await fs.promises.mkdtemp(PathUtil.getJdbcTempDir());
 		const sourcePath = path.join(tempDir, templateFile);
 		const templatePath = path.join(context.extensionPath, 'resources', templateFile);
 		const classPath = `${driverPath}${path.delimiter}${tempDir}`;

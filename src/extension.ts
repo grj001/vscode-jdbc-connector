@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { ConnectionPanel } from './connectionPanel';
 import { ConnectionTreeItem } from './entity/connectionTreeItem';
 import { ConnectionTreeProvider } from './connectionTreeProvider';
+import { QueryPanel } from './queryPanel';
 
 export function activate(context: vscode.ExtensionContext) {
 	const treeProvider = new ConnectionTreeProvider();
@@ -13,10 +14,16 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	const openConnectionPanel = () => ConnectionPanel.show(context);
+	const openQueryPanel = () => QueryPanel.show(context);
 
 	const newConnectionCmd = vscode.commands.registerCommand(
 		'vscode-jdbc-connector.newConnection',
 		openConnectionPanel
+	);
+
+	const newQueryCmd = vscode.commands.registerCommand(
+		'vscode-jdbc-connector.newQuery',
+		openQueryPanel
 	);
 
 	// 编辑连接
@@ -69,6 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
 		treeView,
 		visibilityDisposable,
 		newConnectionCmd,
+		newQueryCmd,
 		editConnectionCmd,
 		loadMoreTablesCmd,
 		refreshCmd

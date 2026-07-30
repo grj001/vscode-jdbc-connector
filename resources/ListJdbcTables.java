@@ -10,8 +10,8 @@ public class ListJdbcTables {
         String jdbcUrl = args[1];
         String username = args[2];
         String password = args[3];
-        String schema = args[4];
-        String catalog = args[5];
+        String catalog = args[4];
+        String schema = args[5];
         int begin = Integer.parseInt(args[6]);
         int end = Integer.parseInt(args[7]);
 
@@ -28,6 +28,12 @@ public class ListJdbcTables {
         }
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, properties)) {
+            if (!catalog.isEmpty()) {
+                try {
+                    connection.setCatalog(catalog);
+                } catch (Exception ignored) {
+                }
+            }
             if (!schema.isEmpty()) {
                 try {
                     connection.setSchema(schema);
@@ -36,11 +42,12 @@ public class ListJdbcTables {
             }
 
             DatabaseMetaData metaData = connection.getMetaData();
-            String targetCatalog = catalog.isEmpty() ? connection.getCatalog() : catalog;
-            String targetSchema = schema.isEmpty() ? null : schema;
             int index = 0;
-
-            try (ResultSet tables = metaData.getTables(targetCatalog, targetSchema, "%", new String[] { "TABLE" })) {
+            try (ResultSet tables = metaData.getTables(
+                catalog.isEmpty() ? null : catalog
+                , schema.isEmpty() ? null : schema, "%"
+                , new String[] { "TABLE" }
+            )) {
                 while (tables.next()) {
                     String schemaName = tables.getString("TABLE_SCHEM");
                     String tableName = tables.getString("TABLE_NAME");

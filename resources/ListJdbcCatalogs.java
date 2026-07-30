@@ -4,13 +4,12 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.util.Properties;
 
-public class ListJdbcSchemas {
+public class ListJdbcCatalogs {
     public static void main(String[] args) throws Exception {
         String driverClassName = args[0];
         String jdbcUrl = args[1];
         String username = args[2];
         String password = args[3];
-        String catalog = args[4];
 
         if (!driverClassName.isEmpty()) {
             Class.forName(driverClassName);
@@ -25,19 +24,12 @@ public class ListJdbcSchemas {
         }
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, properties)) {
-            // 设置数据库
-            if (!catalog.isEmpty()) {
-                try {
-                    connection.setCatalog(catalog);
-                } catch (Exception ignored) {
-                }
-            }
             DatabaseMetaData metaData = connection.getMetaData();
-            try (ResultSet schemas = metaData.getSchemas(catalog.isEmpty() ? null : catalog, null)) {
-                while (schemas.next()) {
-                    String schemaName = schemas.getString("TABLE_SCHEM");
-                    if (schemaName != null && !schemaName.isEmpty()) {
-                        System.out.println(schemaName);
+            try (ResultSet catalogs = metaData.getCatalogs()) {
+                while (catalogs.next()) {
+                    String catalogName = catalogs.getString("TABLE_CAT");
+                    if (catalogName != null && !catalogName.isEmpty()) {
+                        System.out.println(catalogName);
                     }
                 }
             }

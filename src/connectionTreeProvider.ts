@@ -4,8 +4,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { promisify } from 'util';
 import { execFile } from 'child_process';
-import type { ConnectionSettingsPayload } from './ConnectionSettingsPayload';
-import { ConnectionTreeItem } from './connectionTreeItem';
+import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
+import { ConnectionTreeItem } from './entity/connectionTreeItem';
 
 const execFileAsync = promisify(execFile);
 

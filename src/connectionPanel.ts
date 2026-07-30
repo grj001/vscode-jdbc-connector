@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { promisify } from 'util';
-import type { ConnectionSettingsPayload } from './ConnectionSettingsPayload';
+import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
 
 const execFileAsync = promisify(execFile);
 

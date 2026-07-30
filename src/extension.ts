@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { ConnectionPanel } from './connectionPanel';
-import { ConnectionTreeItem } from './connectionTreeItem';
+import { ConnectionTreeItem } from './entity/connectionTreeItem';
 import { ConnectionTreeProvider } from './connectionTreeProvider';
 
 export function activate(context: vscode.ExtensionContext) {

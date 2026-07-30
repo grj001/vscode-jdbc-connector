@@ -32,6 +32,17 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const loadMoreTablesCmd = vscode.commands.registerCommand(
+		'vscode-jdbc-connector.loadMoreTables',
+		(item?: ConnectionTreeItem) => {
+			const targetItem = item ?? treeView.selection[0];
+			if (!targetItem) {
+				return;
+			}
+			treeProvider.loadMoreTables(targetItem);
+		}
+	);
+
 	const refreshCmd = vscode.commands.registerCommand(
 		'vscode-jdbc-connector.refreshConnections',
 		() => treeProvider.refresh()
@@ -59,6 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
 		visibilityDisposable,
 		newConnectionCmd,
 		editConnectionCmd,
+		loadMoreTablesCmd,
 		refreshCmd
 	);
 }

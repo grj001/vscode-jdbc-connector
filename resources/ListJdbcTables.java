@@ -12,6 +12,8 @@ public class ListJdbcTables {
         String password = args[3];
         String schema = args[4];
         String catalog = args[5];
+        int begin = Integer.parseInt(args[6]);
+        int end = Integer.parseInt(args[7]);
 
         if (!driverClassName.isEmpty()) {
             Class.forName(driverClassName);
@@ -36,17 +38,27 @@ public class ListJdbcTables {
             DatabaseMetaData metaData = connection.getMetaData();
             String targetCatalog = catalog.isEmpty() ? connection.getCatalog() : catalog;
             String targetSchema = schema.isEmpty() ? null : schema;
+            int index = 0;
 
             try (ResultSet tables = metaData.getTables(targetCatalog, targetSchema, "%", new String[] { "TABLE" })) {
                 while (tables.next()) {
                     String schemaName = tables.getString("TABLE_SCHEM");
                     String tableName = tables.getString("TABLE_NAME");
-                    if (tableName != null && !tableName.isEmpty()) {
+                    if (tableName == null || tableName.isEmpty()) {
+                        continue;
+                    }
+
+                    if (index >= begin && index < end) {
                         if (schemaName != null && !schemaName.isEmpty()) {
                             System.out.println(schemaName + "." + tableName);
                         } else {
                             System.out.println(tableName);
                         }
+                    }
+
+                    index++;
+                    if (index >= end) {
+                        break;
                     }
                 }
             }

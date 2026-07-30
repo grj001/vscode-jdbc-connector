@@ -14,15 +14,31 @@ const execFileAsync = promisify(execFile);
  */
 export class ConnectionTreeProvider implements vscode.TreeDataProvider<ConnectionTreeItem> {
 	private static readonly EXTENSION_ID = 'undefined_publisher.vscode-jdbc-connector';
+	private static readonly PAGE_SIZE = 100;
 
 	private _onDidChangeTreeData = new vscode.EventEmitter<ConnectionTreeItem | undefined>();
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+	// 每个模式的表范围
+	private readonly schemaRangeMap = new Map<string, number>();
 
 	refresh(): void {
+		this.schemaRangeMap.clear();
+		this._onDidChangeTreeData.fire(undefined);
+	}
+
+	loadMoreTables(item: ConnectionTreeItem): void {
+		if (item.contextValue !== 'table-more' || !item.connection || !item.schemaName) {
+			return;
+		}
+
+		this.schemaRangeMap.set(this.getSchemaKey(item.connection, item.schemaName), item.end ?? ConnectionTreeProvider.PAGE_SIZE);
 		this._onDidChangeTreeData.fire(undefined);
 	}
 
 	getTreeItem(element: ConnectionTreeItem): vscode.TreeItem {
+		if (element.contextValue === 'table-more') {
+			element.iconPath = new vscode.ThemeIcon('refresh');
+		}
 		return element;
 	}
 
@@ -37,7 +53,9 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		}
 
 		if (element?.contextValue === 'schema' && element.connection) {
-			return this.getTableChildren(element.connection, element.schemaName ?? '');
+			const schemaKey = this.getSchemaKey(element.connection, element.schemaName ?? '');
+			const end = this.schemaRangeMap.get(schemaKey) ?? ConnectionTreeProvider.PAGE_SIZE;
+			return this.getTableChildren(element.connection, element.schemaName ?? '', 0, end);
 		}
 
 		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -98,7 +116,16 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			if (!defaultSchema) {
 				return [];
 			}
-			return [new ConnectionTreeItem(defaultSchema, vscode.TreeItemCollapsibleState.Collapsed, undefined, connection, 'schema', defaultSchema)];
+			return [new ConnectionTreeItem(
+				defaultSchema,
+				vscode.TreeItemCollapsibleState.Collapsed,
+				undefined,
+				connection,
+				'schema',
+				defaultSchema,
+				0,
+				ConnectionTreeProvider.PAGE_SIZE
+			)];
 		}
 
 		return schemaNames.map(schemaName => new ConnectionTreeItem(
@@ -107,7 +134,9 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			undefined,
 			connection,
 			'schema',
-			schemaName
+			schemaName,
+			0,
+			ConnectionTreeProvider.PAGE_SIZE
 		));
 	}
 
@@ -115,25 +144,70 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * 获取数据库表子项
 	 * @param connection 数据库连接
 	 * @param schemaName 模式名
+	 * @param begin 起始下标
+	 * @param end 结束下标
 	 * @returns 数据库表子项
 	 */
-	private async getTableChildren(connection: ConnectionSettingsPayload, schemaName: string): Promise<ConnectionTreeItem[]> {
+	private async getTableChildren(
+		connection: ConnectionSettingsPayload,
+		schemaName: string,
+		begin: number,
+		end: number
+	): Promise<ConnectionTreeItem[]> {
 		const stdout = await this.runJavaTemplate(
 			connection,
 			'ListJdbcTables.java',
 			'ListJdbcTables',
-			[schemaName, connection.database?.trim() ?? ''],
+			[schemaName, connection.database?.trim() ?? '', String(begin), String(end)],
 			`读取 ${connection.name} 的数据表`
 		);
 		if (stdout === undefined) {
 			return [];
 		}
 
-		return stdout
+		const tableNames = stdout
 			.split(/\r?\n/)
 			.map(name => name.trim())
-			.filter(Boolean)
-			.map(name => new ConnectionTreeItem(name, vscode.TreeItemCollapsibleState.None, undefined, undefined, 'table'));
+			.filter(Boolean);
+
+		const items = tableNames.map(name => new ConnectionTreeItem(name, vscode.TreeItemCollapsibleState.None, undefined, undefined, 'table'));
+		if (tableNames.length === end - begin) {
+			items.push(new ConnectionTreeItem(
+				`查看更多 ${end}-${end + ConnectionTreeProvider.PAGE_SIZE}`,
+				vscode.TreeItemCollapsibleState.None,
+				{
+					command: 'vscode-jdbc-connector.loadMoreTables',
+					title: '查看更多',
+					arguments: [new ConnectionTreeItem(
+						`查看更多 ${end}-${end + ConnectionTreeProvider.PAGE_SIZE}`,
+						vscode.TreeItemCollapsibleState.None,
+						undefined,
+						connection,
+						'table-more',
+						schemaName,
+						end,
+						end + ConnectionTreeProvider.PAGE_SIZE
+					)]
+				},
+				connection,
+				'table-more',
+				schemaName,
+				end,
+				end + ConnectionTreeProvider.PAGE_SIZE
+			));
+		}
+
+		return items;
+	}
+
+	/**
+	 * 获取模式键
+	 * @param connection 数据库连接
+	 * @param schemaName 模式名
+	 * @returns 模式键
+	 */
+	private getSchemaKey(connection: ConnectionSettingsPayload, schemaName: string): string {
+		return `${connection.id}:${schemaName}`;
 	}
 
 	/**

@@ -140,7 +140,11 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 				undefined,
 				connection,
 				'catalog',
-				catalog.name
+				catalog.name,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
 			));
 		}
 
@@ -203,6 +207,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 				'schema',
 				catalogName,
 				schema.name,
+				undefined,
 				0,
 				ConnectionTreeProvider.PAGE_SIZE
 			));
@@ -236,7 +241,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			if (!defaultSchema) {
 				return [];
 			}
-			return [new ConnectionTreeItem(defaultSchema, vscode.TreeItemCollapsibleState.Collapsed, undefined, connection, 'schema', catalogName, defaultSchema, 0, ConnectionTreeProvider.PAGE_SIZE)];
+			return [new ConnectionTreeItem(defaultSchema, vscode.TreeItemCollapsibleState.Collapsed, undefined, connection, 'schema', catalogName, defaultSchema, undefined, 0, ConnectionTreeProvider.PAGE_SIZE)];
 		}
 
 		return schemaNames.map(schemaName => new ConnectionTreeItem(
@@ -247,6 +252,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			'schema',
 			catalogName,
 			schemaName,
+			undefined,
 			0,
 			ConnectionTreeProvider.PAGE_SIZE
 		));
@@ -440,9 +446,11 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			, 'table'
 			, catalogName
 			, schemaName
+			, name
 			, begin
 			, end
 		));
+		// 创建查看更多项
 		if (hasMore) {
 			items.push(new ConnectionTreeItem(
 				`查看更多 ${end}-${end + ConnectionTreeProvider.PAGE_SIZE}`,
@@ -450,12 +458,23 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 				{
 					command: 'vscode-jdbc-connector.loadMoreTables',
 					title: '查看更多',
-					arguments: [new ConnectionTreeItem(`查看更多 ${end}-${end + ConnectionTreeProvider.PAGE_SIZE}`, vscode.TreeItemCollapsibleState.None, undefined, connection, 'table-more', catalogName, schemaName, end, end + ConnectionTreeProvider.PAGE_SIZE)]
+					arguments: [new ConnectionTreeItem(
+						`查看更多 ${end}-${end + ConnectionTreeProvider.PAGE_SIZE}`
+						, vscode.TreeItemCollapsibleState.None
+						, undefined
+						, connection, 'table-more'
+						, catalogName
+						, schemaName
+						, undefined
+						, end
+						, end + ConnectionTreeProvider.PAGE_SIZE
+					)]
 				},
 				connection,
 				'table-more',
 				catalogName,
 				schemaName,
+				undefined,
 				end,
 				end + ConnectionTreeProvider.PAGE_SIZE
 			));

@@ -40,7 +40,6 @@ public class ListJdbcTables {
             }
 
             DatabaseMetaData metaData = connection.getMetaData();
-            int index = 0;
             try (ResultSet tables = metaData.getTables(
                 catalog.isEmpty() ? null : catalog
                 , schema.isEmpty() ? null : schema, "%"

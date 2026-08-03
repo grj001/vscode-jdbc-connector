@@ -13,6 +13,7 @@ export class ConnectionTreeItem extends vscode.TreeItem {
 		public readonly contextValue?: string,
 		public readonly catalogName?: string,
 		public readonly schemaName?: string,
+		public readonly tableName?: string,
 		public readonly begin?: number,
 		public readonly end?: number
 	) {

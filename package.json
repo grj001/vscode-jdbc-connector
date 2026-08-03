@@ -86,16 +86,7 @@
     ],
     "menus": {
       "editor/title": [
-        {
-          "command": "vscode-jdbc-connector.executeQuery",
-          "when": "resourceExtname == .sql",
-          "group": "navigation@1"
-        },
-        {
-          "command": "vscode-jdbc-connector.executeSelectedQuery",
-          "when": "resourceExtname == .sql",
-          "group": "navigation@2"
-        }
+       
       ],
       "view/title": [
         {

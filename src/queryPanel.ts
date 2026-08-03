@@ -102,7 +102,10 @@ export class QueryPanel {
 	private async _ensureQueryFilePath(): Promise<string> {
 		const queryDir = await PathUtil.getJdbcTempDir();
 		await fs.promises.mkdir(queryDir, { recursive: true });
-		const safeFileName = this._connection.name.replace(/[\\/:*?"<>|]/g, '_');
+		// 生成查询文件名
+		// 数据库名称-模式名称.sql
+		const safeFileName = this._connection.name.replace(/[\\/:*?"<>|]/g, '_')
+			+ "-" + this._connection.schema;
 		const queryFilePath = PathUtil.join(queryDir, `${safeFileName}.sql`);
 		if (!this._queryFilePath || this._queryFilePath !== queryFilePath) {
 			this._queryFilePath = queryFilePath;

@@ -32,9 +32,19 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage('请先选择一个连接。');
 			return;
 		}
+		// 点击表更多项, 不执行查询
+		if(targetItem.contextValue === 'table-more'){
+			return;
+		}
+		// 点击数据库项, 不执行查询
+		if(targetItem.schemaName === undefined){
+			vscode.window.showInformationMessage('请先选择一个模式。');
+			return;
+		}
 		currentQueryConnection = targetItem;
 		// 显示查询面板
 		QueryPanel.show(context, targetItem.connection);
+		// 显示查询结果视图
 		void queryResultViewProvider.reveal();
 	};
 

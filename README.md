@@ -46,6 +46,8 @@ npm run compile
 - 点击 `新建连接`
 - 在弹出的面板中填写 JDBC 连接信息
 
+
+
 ## 项目结构
 
 - `src/extension.ts`：扩展入口
@@ -53,8 +55,7 @@ npm run compile
 - `src/connectionTreeProvider.ts`：左侧树视图数据提供
 - `media/connectionPanel.html`：JDBC 连接配置页面
 
-
-
 ## 许可证
 
-暂未指定
+MIT
+

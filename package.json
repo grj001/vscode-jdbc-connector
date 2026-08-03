@@ -1,6 +1,6 @@
 {
   "name": "vscode-jdbc-connector",
-  "publisher": "grj001",
+  "publisher": "grj",
   "displayName": "JDBC Connector",
   "description": "A VSCode extension for connecting to databases via JDBC",
   "version": "0.0.1",
@@ -123,7 +123,8 @@
   "devDependencies": {
     "@types/vscode": "^1.85.0",
     "@types/node": "18.x",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@vscode/vsce": "^3.9.2"
   },
   "repository": {
     "type": "git",

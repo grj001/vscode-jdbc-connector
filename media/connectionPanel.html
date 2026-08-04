@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>数据库连接</title>
 
 	<script src="{{VUE_JS}}"></script>
-    <!-- import CSS -->
-    <link rel="stylesheet" href="{{ELEMENT_PLUS_CSS}}" />
-    <!-- import JavaScript -->
-    <script src="{{ELEMENT_PLUS_JS}}"></script>
+	<!-- import CSS -->
+	<link rel="stylesheet" href="{{ELEMENT_PLUS_CSS}}" />
+	<!-- import JavaScript -->
+	<script src="{{ELEMENT_PLUS_JS}}"></script>
 
 	<style>
 		* {
@@ -17,9 +18,11 @@
 			margin: 0;
 			padding: 0;
 		}
+
 		:root {
 			color-scheme: light dark;
 		}
+
 		body {
 			font-family: var(--vscode-font-family);
 			color: var(--vscode-foreground);
@@ -27,34 +30,41 @@
 			min-height: 100vh;
 			padding: 24px;
 		}
+
 		#app {
 			max-width: 920px;
 			margin: 0 auto;
 		}
+
 		.header {
 			margin-bottom: 18px;
 		}
+
 		.title {
 			font-size: 20px;
 			font-weight: 600;
 			margin-bottom: 8px;
 		}
+
 		.subtitle {
 			font-size: 13px;
 			opacity: 0.75;
 			line-height: 1.6;
 		}
+
 		.footer-actions {
 			display: flex;
 			justify-content: flex-end;
 			gap: 12px;
 			margin-top: 12px;
 		}
+
 		.hint {
 			font-size: 12px;
 			opacity: 0.7;
 			margin-top: 6px;
 		}
+
 		@media (max-width: 640px) {
 			body {
 				padding: 12px;
@@ -63,6 +73,7 @@
 	</style>
 
 </head>
+
 <body>
 	<div id="app">
 		<div class="header">
@@ -71,73 +82,74 @@
 		</div>
 
 		<el-card class="panel-card" shadow="never">
-			<el-form :model="form" label-position="top" label-width="120px">
+			<el-form :model="form" label-position="top" label-width="120px" :rules="rules" ref="formRef">
 				<el-row :gutter="16">
 					<el-col :xs="24" :sm="24">
-						<el-form-item label="连接名称">
+						<el-form-item label="连接名称" prop="name">
 							<el-input v-model="form.name" placeholder="例如：本地 MySQL" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="驱动类型">
+						<el-form-item label="驱动类型" prop="driverType">
 							<el-select v-model="form.driverType" placeholder="请选择驱动类型" @change="handleDriverTypeChange">
-								<el-option v-for="item in driverTypes" :key="item.value" :label="item.label" :value="item.value" />
+								<el-option v-for="item in driverTypes" :key="item.value" :label="item.label"
+									:value="item.value" />
 							</el-select>
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="24">
-						<el-form-item label="JDBC URL">
+						<el-form-item label="JDBC URL" prop="jdbcUrl">
 							<el-input v-model="form.jdbcUrl" placeholder="jdbc:mysql://localhost:3306/test" />
 							<div class="hint">如果不填写，点击测试连接或保存时会根据主机、端口自动拼接。</div>
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="驱动地址">
+						<el-form-item label="驱动地址" prop="driverPath">
 							<el-input v-model="form.driverPath" placeholder="例如：/path/to/mysql-connector.jar" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="驱动类名">
+						<el-form-item label="驱动类名" prop="driverClass">
 							<el-input v-model="form.driverClass" placeholder="例如：com.mysql.cj.jdbc.Driver" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="JDK地址">
+						<el-form-item label="JDK地址" prop="jdkPath">
 							<el-input v-model="form.jdkPath" placeholder="例如：/path/to/jdk" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="主机地址">
+						<el-form-item label="主机地址" prop="host">
 							<el-input v-model="form.host" placeholder="localhost" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="端口">
+						<el-form-item label="端口" prop="port">
 							<el-input v-model="form.port" type="number" placeholder="3306" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="数据库名">
+						<el-form-item label="数据库名" prop="database">
 							<el-input v-model="form.database" placeholder="test" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="用户名">
+						<el-form-item label="用户名" prop="username">
 							<el-input v-model="form.username" placeholder="root" />
 						</el-form-item>
 					</el-col>
 
 					<el-col :xs="24" :sm="12">
-						<el-form-item label="密码">
+						<el-form-item label="密码" prop="password">
 							<el-input v-model="form.password" type="password" show-password placeholder="请输入密码" />
 						</el-form-item>
 					</el-col>
@@ -183,7 +195,21 @@
 						schema: '',
 						username: '',
 						password: ''
-					}
+					},
+					rules: {
+						name: [{ required: true, message: '请输入连接名称', trigger: 'blur' }],
+						driverType: [{ required: true, message: '请选择驱动类型', trigger: 'blur' }],
+						host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
+						port: [{ required: true, message: '请输入端口', trigger: 'blur' }],
+						database: [{ required: true, message: '请输入数据库名', trigger: 'blur' }],
+						username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+						password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+						driverPath: [{ required: true, message: '请输入驱动地址', trigger: 'blur' }],
+						driverClass: [{ required: true, message: '请输入驱动类名', trigger: 'blur' }],
+						jdkPath: [{ required: true, message: '请输入JDK地址', trigger: 'blur' }],
+						jdbcUrl: [{ required: true, message: '请输入JDBC URL', trigger: 'blur' }],
+					},
+					formRef: null
 				};
 			},
 			methods: {
@@ -237,6 +263,10 @@
 					});
 				},
 				async handleSaveConnection() {
+					const valid = await this.$refs.formRef.validate();
+					if (!valid) {
+						return;
+					}
 					vscode.postMessage({
 						type: 'saveConnection',
 						payload: this.collectPayload()
@@ -254,4 +284,5 @@
 		app.use(ElementPlus).mount('#app');
 	</script>
 </body>
+
 </html>

@@ -125,6 +125,7 @@ export function activate(context: vscode.ExtensionContext) {
 		void vscode.commands.executeCommand('workbench.view.extension.jdbc-connector').then(() => {
 			setTimeout(() => {
 				treeProvider.refresh();
+				// 确保连接树视图可见, 并设置焦点到连接树视图
 				void vscode.commands.executeCommand('jdbcConnections.focus');
 			}, 200);
 		});

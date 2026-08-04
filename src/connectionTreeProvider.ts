@@ -17,6 +17,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	constructor(private readonly _context: vscode.ExtensionContext) {
 	}
 
+	// 当连接树视图选择项改变时触发
 	private _onDidChangeTreeData = new vscode.EventEmitter<ConnectionTreeItem | undefined>();
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 	// 每个模式的表范围
@@ -131,7 +132,9 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 	 * @returns 数据库子项
 	 */
 	private async getCatalogChildren(connection: ConnectionSettingsPayload): Promise<ConnectionTreeItem[]> {
+		// 从缓存中获取数据库列表
 		const cachedConnectionData = await this.getOrLoadConnectionCache(connection);
+		// 如果缓存中存在数据库列表, 则直接返回
 		const cachedCatalogs = cachedConnectionData?.catalogs ?? [];
 		if (cachedCatalogs.length) {
 			return cachedCatalogs.map(catalog => new ConnectionTreeItem(

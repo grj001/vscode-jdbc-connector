@@ -2,6 +2,8 @@
 
 一个用于在 VS Code 中管理数据库 JDBC 连接的扩展。
 
+![alt text](img/入口.png)
+
 ## 功能
 
 - 在侧边栏中显示 JDBC 连接视图

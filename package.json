@@ -3,7 +3,7 @@
   "publisher": "grj",
   "displayName": "JDBC Connector",
   "description": "A VSCode extension for connecting to databases via JDBC",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -113,6 +113,7 @@
       ]
     }
   },
+  "icon": "resources/database-icon.png",
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",

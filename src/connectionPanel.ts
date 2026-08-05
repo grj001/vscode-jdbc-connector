@@ -60,6 +60,7 @@ export class ConnectionPanel {
 		}, null, this._context.subscriptions);
 	}
 
+	
 	/**
 	 * 获取HTML内容
 	 * @returns HTML内容

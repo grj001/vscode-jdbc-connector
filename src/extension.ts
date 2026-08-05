@@ -121,17 +121,19 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	const revealView = () => {
-		void vscode.commands.executeCommand('workbench.view.extension.jdbc-connector').then(() => {
-			setTimeout(() => {
-				treeProvider.refresh();
-				// 确保连接树视图可见, 并设置焦点到连接树视图
-				void vscode.commands.executeCommand('jdbcConnections.focus');
-			}, 200);
-		});
-	};
+	// const revealView = () => {
+	// 	// 显示连接树视图
+	// 	void vscode.commands.executeCommand('workbench.view.extension.jdbc-connector').then(() => {
+	// 		setTimeout(() => {
+	// 			treeProvider.refresh();
+	// 			// 确保连接树视图可见, 并设置焦点到连接树视图
+	// 			void vscode.commands.executeCommand('jdbcConnections.focus');
+	// 		}, 200);
+	// 	});
+	// };
 
-	revealView();
+	// // 初始化时显示连接树视图
+	// revealView();
 
 	// 注册命令
 	context.subscriptions.push(

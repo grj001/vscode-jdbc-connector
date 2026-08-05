@@ -237,6 +237,8 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			[catalogName],
 			`读取 ${connection.name} 的模式`
 		);
+		
+		// mysql 不支持读取模式, 直接返回 no_schema
 		if (stdout === undefined) {
 			stdout = 'no_schema';
 		}

@@ -103,12 +103,17 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		const settingsPath = path.join(workspaceFolder, '.vscode', 'settings.json');
 		let currentSettings: Record<string, unknown> = {};
 		try {
+			// 判断文件是否存在
+			if (!fs.existsSync(settingsPath)) {
+				return [];
+			}
 			const raw = fs.readFileSync(settingsPath, 'utf8');
 			currentSettings = raw.trim() ? JSON.parse(raw) : {};
 		} catch (error) {
 			const code = (error as NodeJS.ErrnoException).code;
+			const message = (error as NodeJS.ErrnoException).message;
 			if (code !== 'ENOENT') {
-				vscode.window.showErrorMessage('读取连接配置失败。');
+				vscode.window.showErrorMessage(`读取连接配置失败。${message}`);
 			}
 			return [];
 		}

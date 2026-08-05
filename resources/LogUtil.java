@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class LogUtil {
-    private static final Path LOG_FILE = Paths.get("resources", "logs", "app.log");
+    private static final Path LOG_FILE = Paths.get("logs", "app.log");
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
     private LogUtil() {
@@ -39,11 +39,10 @@ public class LogUtil {
             }
 
             try (BufferedWriter writer = Files.newBufferedWriter(
-                LOG_FILE,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND
-            )) {
+                    LOG_FILE,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND)) {
                 writer.write("[" + LocalDateTime.now().format(FORMATTER) + "] [" + level + "] " + message);
                 writer.newLine();
                 if (throwable != null) {

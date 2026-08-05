@@ -28,6 +28,7 @@ public class ExecuteJdbcQuery {
         }
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, properties)) {
+
             if (!database.isEmpty()) {
                 try {
                     LogUtil.info("设置数据库为：" + database);
@@ -46,7 +47,8 @@ public class ExecuteJdbcQuery {
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 boolean hasResultSet = statement.execute();
                 if (!hasResultSet) {
-                    System.out.println("{\"columns\":[],\"rows\":[],\"message\":\"执行成功，影响行数：" + statement.getUpdateCount() + "\"}");
+                    System.out.println("{\"columns\":[],\"rows\":[],\"message\":\"执行成功，影响行数："
+                            + statement.getUpdateCount() + "\"}");
                     return;
                 }
 
@@ -92,10 +94,10 @@ public class ExecuteJdbcQuery {
 
     private static String escape(String value) {
         return value
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\r", "\\r")
-            .replace("\n", "\\n")
-            .replace("\t", "\\t");
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r", "\\r")
+                .replace("\n", "\\n")
+                .replace("\t", "\\t");
     }
 }

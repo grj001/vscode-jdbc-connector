@@ -64,7 +64,7 @@ export class JavaExecutorUtil {
 				const templateFilePath = path.join(templateDir, fileName);
 				const sourceFilePath = path.join(sourceDir, fileName);
 				const stat = await fs.promises.stat(templateFilePath);
-				if (stat.isFile()) {
+				if (stat.isFile() && fileName.endsWith('.java')) {
 					await fs.promises.copyFile(templateFilePath, sourceFilePath);
 				}
 			}
@@ -88,7 +88,7 @@ export class JavaExecutorUtil {
 					context.password ?? '',
 					...args
 				],
-				{ timeout: 15000, windowsHide: true }
+				{ cwd: tempDir, timeout: 15000, windowsHide: true }
 			);
 			return stdout;
 		} catch (error) {

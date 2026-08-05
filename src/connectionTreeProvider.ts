@@ -253,7 +253,18 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			if (!defaultSchema) {
 				return [];
 			}
-			return [new ConnectionTreeItem(defaultSchema, vscode.TreeItemCollapsibleState.Collapsed, undefined, connection, 'schema', catalogName, defaultSchema, undefined, 0, ConnectionTreeProvider.PAGE_SIZE)];
+			return [new ConnectionTreeItem(
+				defaultSchema
+				, vscode.TreeItemCollapsibleState.Collapsed
+				, undefined
+				, connection
+				, 'schema'
+				, catalogName
+				, defaultSchema
+				, undefined
+				, 0
+				, ConnectionTreeProvider.PAGE_SIZE
+			)];
 		}
 
 		return schemaNames.map(schemaName => new ConnectionTreeItem(
@@ -425,7 +436,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 		return schema;
 	}
 
-	
+
 	// #endregion
 
 

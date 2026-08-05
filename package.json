@@ -86,9 +86,7 @@
       }
     ],
     "menus": {
-      "editor/title": [
-       
-      ],
+      "editor/title": [],
       "view/title": [
         {
           "command": "vscode-jdbc-connector.newConnection",
@@ -122,14 +120,17 @@
     "publish": "npx @vscode/vsce publish"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "18.x",
-    "typescript": "^5.3.3",
-    "@vscode/vsce": "^3.9.2"
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.3.3"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/grj001/vscode-jdbc-connector.git"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "json5": "^2.2.3"
+  }
 }

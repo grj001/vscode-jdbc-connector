@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as JSON5 from 'json5';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
@@ -108,7 +109,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 				return [];
 			}
 			const raw = fs.readFileSync(settingsPath, 'utf8');
-			currentSettings = raw.trim() ? JSON.parse(raw) : {};
+			currentSettings = raw.trim() ? JSON5.parse(raw) : {};
 		} catch (error) {
 			const code = (error as NodeJS.ErrnoException).code;
 			const message = (error as NodeJS.ErrnoException).message;

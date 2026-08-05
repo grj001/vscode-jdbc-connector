@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import { PathUtil } from './pathUtil';
+import * as JSON5 from 'json5';
 
 /**
  * 数据库缓存信息
@@ -28,7 +29,7 @@ export class ConnectionCacheUtil {
 		const cachePath = ConnectionCacheUtil.getCacheFilePath();
 		try {
 			const raw = await fs.promises.readFile(cachePath, 'utf8');
-			return raw.trim() ? JSON.parse(raw) as Record<string, ConnectionCacheData> : {};
+			return raw.trim() ? JSON5.parse(raw) as Record<string, ConnectionCacheData> : {};
 		} catch (error) {
 			const code = (error as NodeJS.ErrnoException).code;
 			if (code === 'ENOENT') {

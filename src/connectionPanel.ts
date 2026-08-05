@@ -5,6 +5,7 @@ import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPaylo
 import { ConnectionCacheUtil } from './util/connectionCacheUtil';
 import { JavaExecutorUtil } from './util/javaExecutorUtil';
 import { PathUtil } from './util/pathUtil';
+import { SettingUtil } from './util/settingUtil';
 
 /**
  * 数据库连接面板
@@ -72,18 +73,8 @@ export class ConnectionPanel {
 
 		const settingsDir = path.join(workspaceFolder, '.vscode');
 		const settingsPath = path.join(settingsDir, 'settings.json');
-		await fs.promises.mkdir(settingsDir, { recursive: true });
 
-		let currentSettings: Record<string, unknown> = {};
-		try {
-			const raw = await fs.promises.readFile(settingsPath, 'utf8');
-			currentSettings = raw.trim() ? JSON.parse(raw) : {};
-		} catch (error) {
-			const code = (error as NodeJS.ErrnoException).code;
-			if (code !== 'ENOENT') {
-				throw error;
-			}
-		}
+		let currentSettings: Record<string, unknown> = await SettingUtil.getSettings();
 
 		const connections = Array.isArray(currentSettings['vscode-jdbc-connector.connections'])
 			? (currentSettings['vscode-jdbc-connector.connections'] as ConnectionSettingsPayload[])

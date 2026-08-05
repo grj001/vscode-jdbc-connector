@@ -4,6 +4,7 @@ import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPaylo
 import { QueryResultViewProvider } from './queryResultViewProvider';
 import { JavaExecutorUtil } from './util/javaExecutorUtil';
 import { PathUtil } from './util/pathUtil';
+import * as JSON5 from 'json5';
 
 interface QueryExecutionResult {
 	columns: string[];
@@ -190,7 +191,7 @@ export class QueryPanel {
 				return;
 			}
 
-			const result = JSON.parse(stdout.trim()) as QueryExecutionResult;
+			const result = JSON5.parse(stdout.trim()) as QueryExecutionResult;
 			this._showResult(result);
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);

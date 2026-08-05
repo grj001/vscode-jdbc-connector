@@ -50,10 +50,26 @@ export class JavaExecutorUtil {
 		const tempDir = await PathUtil.getJdbcTempDir();
 		const sourcePath = path.join(tempDir, templateFile);
 		const templatePath = path.join(context.extensionPath, 'resources', templateFile);
+		
+		const sourceDir = path.join(tempDir);
+		const templateDir = path.join(context.extensionPath, 'resources');
+
 		const classPath = `${driverPath}${path.delimiter}${tempDir}`;
 
 		try {
-			await fs.promises.copyFile(templatePath, sourcePath);
+			// 改为复制所有java文件到临时目录
+			await fs.promises.mkdir(sourceDir, { recursive: true });
+			const templateFiles = await fs.promises.readdir(templateDir);
+			for (const fileName of templateFiles) {
+				const templateFilePath = path.join(templateDir, fileName);
+				const sourceFilePath = path.join(sourceDir, fileName);
+				const stat = await fs.promises.stat(templateFilePath);
+				if (stat.isFile()) {
+					await fs.promises.copyFile(templateFilePath, sourceFilePath);
+				}
+			}
+
+			// await fs.promises.copyFile(templatePath, sourcePath);
 			await execFileAsync(
 				'javac',
 				['-encoding', 'UTF-8', sourcePath],

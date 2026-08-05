@@ -52,7 +52,12 @@ public class ListJdbcTables {
                         continue;
                     }
 
-                    System.out.println(schemaName + "." + tableName);
+                    // mysql 会返回 null 表示默认模式
+                    if (schemaName == null || schemaName.isEmpty()) {
+                        System.out.println(tableName);
+                    }else{
+                        System.out.println(schemaName + "." + tableName);
+                    }
                 }
             }
         }

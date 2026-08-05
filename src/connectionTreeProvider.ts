@@ -222,7 +222,7 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			));
 		}
 
-		const stdout = await JavaExecutorUtil.runJavaTemplate(
+		let stdout = await JavaExecutorUtil.runJavaTemplate(
 			{
 				extensionPath: this._context.extensionPath,
 				workspacePath: PathUtil.getWorkspacePath(),
@@ -238,7 +238,10 @@ export class ConnectionTreeProvider implements vscode.TreeDataProvider<Connectio
 			`读取 ${connection.name} 的模式`
 		);
 		if (stdout === undefined) {
-			return [];
+			stdout = 'no_schema';
+		}
+		if (stdout === '') {
+			stdout = 'no_schema';
 		}
 
 		const schemaNames = stdout.split(/\r?\n/).map(name => name.trim()).filter(Boolean);

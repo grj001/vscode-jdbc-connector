@@ -167,8 +167,9 @@ export class QueryPanel {
 			return;
 		}
 
-		const schema = this._connection.schema?.trim() ?? '';
-		const database = this._connection.database?.trim() ?? '';
+		let schema = this._connection.schema?.trim() ?? '';
+		let database = this._connection.database?.trim() ?? '';
+
 		const execArgs = database ? [database, schema, sql] : [schema, sql];
 		const statusBar = vscode.window.setStatusBarMessage(onlySelection ? '正在执行已选中 SQL...' : '正在执行 SQL 查询...');
 		try {

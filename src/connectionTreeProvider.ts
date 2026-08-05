@@ -4,9 +4,9 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
 import { ConnectionTreeItem } from './entity/connectionTreeItem';
-import { ConnectionCacheData, ConnectionCacheUtil } from './util/ConnectionCacheUtil';
-import { JavaExecutorUtil } from './util/JavaExecutorUtil';
-import { PathUtil } from './util/PathUtil';
+import { ConnectionCacheData, ConnectionCacheUtil } from './util/connectionCacheUtil';
+import { JavaExecutorUtil } from './util/javaExecutorUtil';
+import { PathUtil } from './util/pathUtil';
 
 /**
  * 数据库连接树提供者

@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { PathUtil } from './PathUtil';
+import { PathUtil } from './pathUtil';
 
 /**
  * 数据库缓存信息

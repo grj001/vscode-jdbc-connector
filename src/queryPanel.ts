@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
 import { QueryResultViewProvider } from './queryResultViewProvider';
-import { JavaExecutorUtil } from './util/JavaExecutorUtil';
-import { PathUtil } from './util/PathUtil';
+import { JavaExecutorUtil } from './util/javaExecutorUtil';
+import { PathUtil } from './util/pathUtil';
 
 interface QueryExecutionResult {
 	columns: string[];

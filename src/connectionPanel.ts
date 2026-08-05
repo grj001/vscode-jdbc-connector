@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ConnectionSettingsPayload } from './entity/ConnectionSettingsPayload';
-import { ConnectionCacheUtil } from './util/ConnectionCacheUtil';
-import { JavaExecutorUtil } from './util/JavaExecutorUtil';
-import { PathUtil } from './util/PathUtil';
+import { ConnectionCacheUtil } from './util/connectionCacheUtil';
+import { JavaExecutorUtil } from './util/javaExecutorUtil';
+import { PathUtil } from './util/pathUtil';
 
 /**
  * 数据库连接面板

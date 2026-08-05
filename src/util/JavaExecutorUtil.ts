@@ -3,7 +3,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { execFile } from 'child_process';
 import * as vscode from 'vscode';
-import { PathUtil } from './PathUtil';
+import { PathUtil } from './pathUtil';
 
 const execFileAsync = promisify(execFile);
 
